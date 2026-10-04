@@ -17,6 +17,7 @@ const SUGGESTIONS = [
   'How have confirmed sales trended over the last 8 weeks?',
   '高功率套件（KIT-HP）由哪些零件组成？',
   '目前有哪些製造訂單正在進行中？',
+  'Draft purchase orders for what we are short of to build 5 high-power kits.',
 ]
 
 type AssistantTurn = Extract<TranscriptItem, { kind: 'assistant' }>
@@ -71,7 +72,7 @@ export default function ChatPanel({ open, onClose }: { open: boolean; onClose: (
     setItems((prev) => [
       ...prev,
       { kind: 'user', text: question },
-      { kind: 'assistant', text: '', tools: [], streaming: true },
+      { kind: 'assistant', text: '', tools: [], actions: [], streaming: true },
     ])
     try {
       let id = conversationId

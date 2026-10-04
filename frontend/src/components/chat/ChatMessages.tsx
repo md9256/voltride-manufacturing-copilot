@@ -1,5 +1,6 @@
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { ProposalCard } from '../ProposalCard'
 import type { ToolChip, TranscriptItem } from './transcript'
 
 const TOOL_LABELS: Record<string, string> = {
@@ -10,6 +11,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_manufacturing_order: 'Looked up manufacturing order',
   list_manufacturing_orders: 'Listed manufacturing orders',
   get_sales_summary: 'Summarised sales',
+  draft_purchase_orders: 'Prepared purchase proposal',
 }
 
 function ToolChipView({ tool }: { tool: ToolChip }) {
@@ -58,6 +60,9 @@ export function ChatMessages({ items }: { items: TranscriptItem[] }) {
                 ))}
               </div>
             )}
+            {item.actions.map((a) => (
+              <ProposalCard key={a.id} id={a.id} initial={a.initial} compact />
+            ))}
             {item.text && (
               <div className="chat-markdown text-sm text-slate-800">
                 <Markdown remarkPlugins={[remarkGfm]}>{item.text}</Markdown>

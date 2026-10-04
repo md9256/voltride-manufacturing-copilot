@@ -1,3 +1,4 @@
+import type { ActionView } from '../../api/actions'
 import type { ChatEvent, DisplayMessage } from '../../api/chat'
 
 export interface ToolChip {
@@ -11,7 +12,16 @@ export interface ToolChip {
 /** One user message, or everything the assistant did in reply to it. */
 export type TranscriptItem =
   | { kind: 'user'; text: string }
-  | { kind: 'assistant'; text: string; tools: ToolChip[]; error?: string; streaming?: boolean }
+  | {
+      kind: 'assistant'
+      text: string
+      tools: ToolChip[]
+      // Proposed write actions, rendered as confirmation cards. `initial` is the
+      // streamed snapshot; stored conversations fetch the current state by id.
+      actions: { id: string; initial?: ActionView }[]
+      error?: string
+      streaming?: boolean
+    }
 
 /**
  * Fold stored steps into display turns: an assistant reply may span several
@@ -22,7 +32,7 @@ export function fromStored(messages: DisplayMessage[]): TranscriptItem[] {
   const current = () => {
     const last = items.at(-1)
     if (last?.kind === 'assistant') return last
-    const fresh: TranscriptItem = { kind: 'assistant', text: '', tools: [] }
+    const fresh: TranscriptItem = { kind: 'assistant', text: '', tools: [], actions: [] }
     items.push(fresh)
     return fresh
   }
@@ -38,6 +48,7 @@ export function fromStored(messages: DisplayMessage[]): TranscriptItem[] {
       for (const r of m.display.results) {
         const chip = turn.tools.find((t) => t.id === r.id)
         if (chip) Object.assign(chip, { status: r.ok ? 'ok' : 'error', summary: r.summary })
+        if (r.action_id) turn.actions.push({ id: r.action_id })
       }
     }
   }
@@ -70,6 +81,8 @@ export function applyEvent(
           t.id === event.id ? { ...t, status: event.ok ? 'ok' : 'error', summary: event.summary } : t,
         ),
       }
+    case 'action_proposed':
+      return { ...turn, actions: [...turn.actions, { id: event.action.id, initial: event.action }] }
     case 'done':
       return { ...turn, streaming: false }
     case 'error':

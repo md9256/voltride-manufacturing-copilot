@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { ApiError } from './client'
+import type { ActionView } from './actions'
+import { ApiError, clientId, errorFrom, ownedRequest } from './client'
 
 // --- types (mirror backend/app/api/chat.py) ---
 
@@ -21,7 +22,7 @@ export interface ConversationSummary {
 export type DisplayMessage =
   | { role: 'user'; display: { text: string } }
   | { role: 'assistant'; display: { text: string; tool_calls: { id: string; name: string; input: unknown }[] } }
-  | { role: 'tool'; display: { results: { id: string; ok: boolean; summary: string }[] } }
+  | { role: 'tool'; display: { results: { id: string; ok: boolean; summary: string; action_id?: string | null }[] } }
 
 export interface ConversationDetail extends ConversationSummary {
   messages: DisplayMessage[]
@@ -30,69 +31,31 @@ export interface ConversationDetail extends ConversationSummary {
 
 export type ChatEvent =
   | { type: 'text'; delta: string }
+  | { type: 'action_proposed'; tool_call_id: string; action: ActionView }
   | { type: 'tool_started'; id: string; name: string; input: unknown }
   | { type: 'tool_finished'; id: string; name: string; ok: boolean; summary: string }
   | { type: 'done' }
   | { type: 'error'; message: string }
 
-// --- anonymous client id ---
-
-const CLIENT_ID_KEY = 'voltride.clientId'
-let memoryClientId: string | null = null
-
-/**
- * A random id that scopes this browser's conversations (not authentication).
- * Kept in localStorage; falls back to memory where storage is unavailable.
- */
-export function clientId(): string {
-  try {
-    const stored = localStorage.getItem(CLIENT_ID_KEY)
-    if (stored) return stored
-    const id = crypto.randomUUID()
-    localStorage.setItem(CLIENT_ID_KEY, id)
-    return id
-  } catch {
-    memoryClientId ??= crypto.randomUUID()
-    return memoryClientId
-  }
-}
-
-async function chatRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  let response: Response
-  try {
-    response = await fetch(path, {
-      ...init,
-      headers: { Accept: 'application/json', 'X-Client-Id': clientId(), ...init?.headers },
-    })
-  } catch {
-    throw new ApiError(0, 'Cannot reach the server.')
-  }
-  if (!response.ok) {
-    const body = await response.json().catch(() => null)
-    throw new ApiError(response.status, typeof body?.detail === 'string' ? body.detail : response.statusText)
-  }
-  return (response.status === 204 ? undefined : await response.json()) as T
-}
-
 // --- queries ---
 
 export const useChatStatus = () =>
-  useQuery({ queryKey: ['chat', 'status'], queryFn: () => chatRequest<ChatStatus>('/api/chat/status') })
+  useQuery({ queryKey: ['chat', 'status'], queryFn: () => ownedRequest<ChatStatus>('/api/chat/status') })
 
 export const useConversations = (enabled: boolean) =>
   useQuery({
     queryKey: ['chat', 'conversations'],
-    queryFn: () => chatRequest<ConversationSummary[]>('/api/chat/conversations'),
+    queryFn: () => ownedRequest<ConversationSummary[]>('/api/chat/conversations'),
     enabled,
   })
 
-export const fetchConversation = (id: string) => chatRequest<ConversationDetail>(`/api/chat/conversations/${id}`)
+export const fetchConversation = (id: string) => ownedRequest<ConversationDetail>(`/api/chat/conversations/${id}`)
 
 export const createConversation = () =>
-  chatRequest<ConversationSummary>('/api/chat/conversations', { method: 'POST' })
+  ownedRequest<ConversationSummary>('/api/chat/conversations', { method: 'POST' })
 
 export const deleteConversation = (id: string) =>
-  chatRequest<void>(`/api/chat/conversations/${id}`, { method: 'DELETE' })
+  ownedRequest<void>(`/api/chat/conversations/${id}`, { method: 'DELETE' })
 
 /**
  * Send a message and read the reply as Server-Sent Events.
@@ -118,10 +81,7 @@ export async function streamMessage(
     if (signal?.aborted) return
     throw new ApiError(0, 'Cannot reach the server.')
   }
-  if (!response.ok || !response.body) {
-    const body = await response.json().catch(() => null)
-    throw new ApiError(response.status, typeof body?.detail === 'string' ? body.detail : response.statusText)
-  }
+  if (!response.ok || !response.body) throw await errorFrom(response)
 
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
   let buffer = ''

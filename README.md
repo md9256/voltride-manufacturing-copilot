@@ -4,7 +4,7 @@ A web app on top of Odoo for a fictional e-bike drive-system manufacturer:
 production dashboard, BOM explorer and planner, and an AI assistant that works
 through typed, validated tools. See [SPEC.md](SPEC.md) for the full plan.
 
-> Work in progress. Phases 1-3 (dashboard, BOM explorer, planner, demo mode, read-only AI assistant) are done; the full README with the
+> Work in progress. Phases 1-4 (dashboard, BOM explorer, planner, demo mode, AI assistant, confirmed write actions, quote intake, audit log) are done; the full README with the
 > architecture diagram, deployment and AI safety design lands in Phase 6.
 
 ## Layout
@@ -27,6 +27,17 @@ The assistant reads ERP data only through seven typed, read-only tools in
 Google Gemini's free tier by default (`LLM_PROVIDER=gemini`) or on Claude
 (`LLM_PROVIDER=anthropic`); chat history is stored in Postgres (Neon) and the
 schema is applied by Alembic at startup.
+
+### Writes and quote intake
+
+The assistant can only *propose* draft purchase orders. A proposal is stored and
+shown with Confirm / Reject buttons; only the user's Confirm (a separate endpoint
+the model cannot call) creates draft RFQs in Odoo, after re-validating the
+proposal. Supplier quote PDFs are read by the model into a typed structure, then
+checked in plain code (arithmetic, supplier and product matching, prices,
+currency, duplicates) before they can become a proposal. Every tool call,
+proposal, decision and extraction is written to an append-only audit log.
+Sample quotes: `backend/samples/quotes/` (`python -m scripts.make_sample_quotes`).
 
 ## Local development
 
