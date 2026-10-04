@@ -226,6 +226,7 @@ class Seeder:
                     "partner_id": self.partner_ids[po.supplier],
                     "partner_ref": po.ref,
                     "date_order": days_ago(po.days_ago),
+                    **({"date_planned": days_ago(-po.receipt_in_days, hour=1)} if po.receipt_in_days else {}),
                     "order_line": [
                         [0, 0, {"product_id": self.product_ids[code], "product_qty": qty, "price_unit": cost[code]}]
                         for code, qty in po.lines.items()
@@ -247,6 +248,7 @@ class Seeder:
                     "partner_id": self.partner_ids[so.customer],
                     "client_order_ref": so.ref,
                     "date_order": date_order,
+                    **({"commitment_date": days_ago(-so.commitment_in_days, hour=2)} if so.commitment_in_days else {}),
                     "order_line": [
                         [
                             0,
@@ -287,6 +289,7 @@ class Seeder:
                     "bom_id": self.bom_ids[mo.product],
                     "origin": mo.ref,
                     "date_start": days_ago(mo.days_ago, hour=mo.hour_utc),
+                    **({"date_deadline": days_ago(-mo.deadline_in_days, hour=10)} if mo.deadline_in_days else {}),
                 },
             )
             target = self.MO_STATE_RANK[mo.state]
@@ -380,12 +383,55 @@ class Seeder:
         """
         open_mos = self.rpc.search_read(
             "mrp.production",
-            [["origin", "like", "SEED-MO-"], ["state", "in", ["confirmed", "progress"]], ["is_planned", "=", False]],
+            [
+                ["origin", "in", [m.ref for m in data.MANUFACTURING_ORDERS]],
+                ["state", "in", ["confirmed", "progress"]],
+                ["is_planned", "=", False],
+            ],
             ["name"],
         )
         for mo in open_mos:
             self.rpc.call("mrp.production", "button_plan", ids=[mo["id"]])
             self.stats["manufacturing order planned"] += 1
+
+    ACTIVITY_TYPES = {
+        "todo": "mail_activity_data_todo",
+        "call": "mail_activity_data_call",
+        "email": "mail_activity_data_email",
+    }
+    ORDER_KEYS = {"sale.order": "client_order_ref", "purchase.order": "partner_ref", "mrp.production": "origin"}
+
+    def activities(self) -> None:
+        """To-dos with due dates on orders (Odoo activities, part of the base system)."""
+        uid = self._uid()
+        for act in data.ACTIVITIES:
+            record = self._find_one(act.model, [[self.ORDER_KEYS[act.model], "=", act.ref]])
+            if record is None:
+                print(f"  warning: {act.model} {act.ref} not found; skipping activity")
+                continue
+            model_id = self._find_one("ir.model", [["model", "=", act.model]])
+            self._ensure(
+                "activity",
+                "mail.activity",
+                [["res_model", "=", act.model], ["res_id", "=", record], ["summary", "=", act.summary]],
+                {
+                    "res_model_id": model_id,
+                    "res_id": record,
+                    "activity_type_id": self._xmlid("mail", self.ACTIVITY_TYPES[act.kind]),
+                    "summary": act.summary,
+                    "note": f"<p>{act.note}</p>" if act.note else False,
+                    "date_deadline": days_ago(-act.due_in_days)[:10],
+                    "user_id": uid,
+                },
+            )
+
+    def _xmlid(self, module: str, name: str) -> int:
+        rows = self.rpc.search_read(
+            "ir.model.data", [["module", "=", module], ["name", "=", name]], ["res_id"], limit=1
+        )
+        if not rows:
+            raise OdooError(f"external id {module}.{name} not found")
+        return rows[0]["res_id"]
 
     def _mo_state(self, mo_id: int) -> str:
         return self.rpc.call("mrp.production", "read", ids=[mo_id], fields=["state"])[0]["state"]
@@ -439,6 +485,7 @@ class Seeder:
             ("Sale orders", self.sale_orders),
             ("Manufacturing orders", self.manufacturing_orders),
             ("Scheduling", self.plan_manufacturing_orders),
+            ("Activities", self.activities),
         ]
         for title, step in steps:
             print(f"{title}...")

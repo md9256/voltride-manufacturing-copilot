@@ -16,6 +16,7 @@ deliberately short in stock: it is the bottleneck the planner should find.
 Prices are in the company currency (HKD on the trial database).
 """
 
+import random
 from dataclasses import dataclass, field
 
 
@@ -76,6 +77,7 @@ class SaleOrder:
     days_ago: int
     state: str  # draft | sale | cancel
     lines: dict[str, float]  # kit code -> quantity
+    commitment_in_days: int | None = None  # promised delivery date, relative to today
 
 
 @dataclass(frozen=True)
@@ -85,6 +87,7 @@ class PurchaseOrder:
     days_ago: int
     state: str  # draft | purchase
     lines: dict[str, float]
+    receipt_in_days: int | None = None  # expected arrival, relative to today
 
 
 @dataclass(frozen=True)
@@ -102,6 +105,19 @@ class ManufacturingOrder:
     # tops up exactly what they consume before finishing them, and removes
     # what they produce afterwards (as if it had shipped or been used since).
     stock_neutral: bool = False
+    deadline_in_days: int | None = None  # Odoo "deadline", relative to today
+
+
+@dataclass(frozen=True)
+class Activity:
+    """An Odoo activity (a to-do with a due date) attached to an order."""
+
+    model: str  # sale.order | purchase.order | mrp.production
+    ref: str  # the order's business key (client ref, vendor ref or MO origin)
+    kind: str  # todo | call | email
+    summary: str
+    due_in_days: int
+    note: str = ""
 
 
 SUPPLIERS = [
@@ -289,4 +305,99 @@ MANUFACTURING_ORDERS = [
     ManufacturingOrder("SEED-MO-017", "KIT-HUB", 2, 4, "done", 1.10, hour_utc=3, stock_neutral=True),
     ManufacturingOrder("SEED-MO-018", "SA-DSP", 4, 0, "progress", 1.20, hour_utc=1, stock_neutral=True),
     ManufacturingOrder("SEED-MO-019", "SA-CTL-HP", 2, 2, "done", 1.05, hour_utc=2, stock_neutral=True),
+]
+
+
+# --- Generated test data ----------------------------------------------------------
+# More history plus work due tomorrow, produced by a seeded random generator:
+# every run yields the same references and quantities, so the seed stays
+# idempotent. "Tomorrow" is relative to the day the seed runs.
+
+CUSTOMERS += [
+    Customer("CUS-HEM", "Harbour E-Mobility Ltd", "Hong Kong"),
+    Customer("CUS-KCW", "Kowloon Cycle Works", "Hong Kong"),
+    Customer("CUS-NVB", "Nordic Volt Bikes", "Oslo"),
+]
+
+
+def _generated_sale_orders(rng: random.Random) -> list[SaleOrder]:
+    customers = [c.ref for c in CUSTOMERS]
+    kits = ["KIT-MID", "KIT-HP", "KIT-HUB"]
+    orders = []
+    # Twelve confirmed orders over the last ten weeks, for the sales trend.
+    for i, days in enumerate(sorted(rng.sample(range(3, 70), 12), reverse=True), start=1):
+        lines = {kit: rng.randint(1, 8) for kit in rng.sample(kits, rng.choice([1, 1, 2]))}
+        orders.append(SaleOrder(f"GEN-SO-{i:03d}", rng.choice(customers), days, "sale", lines))
+    # Three confirmed orders whose delivery is promised for tomorrow.
+    for i in range(13, 16):
+        lines = {rng.choice(kits): rng.randint(1, 4)}
+        orders.append(
+            SaleOrder(f"GEN-SO-{i:03d}", rng.choice(customers), rng.randint(3, 10), "sale", lines, commitment_in_days=1)
+        )
+    return orders
+
+
+_rng = random.Random(20261005)
+SALE_ORDERS += _generated_sale_orders(_rng)
+
+# Restock receipts expected tomorrow, for parts that are not short (so the
+# planner's shortage scenarios stay as designed), plus one open request.
+PURCHASE_ORDERS += [
+    PurchaseOrder("GEN-PO-001", "SUP-NBP", 6, "purchase", {"BOLT-KIT": 100, "PKG-BOX": 80}, receipt_in_days=1),
+    PurchaseOrder("GEN-PO-002", "SUP-DGC", 5, "purchase", {"CBL-BRK": 40, "CBL-MAIN": 20}, receipt_in_days=1),
+    PurchaseOrder("GEN-PO-003", "SUP-VPD", 1, "draft", {"CAS-DSP": 40, "BTN-PAD": 40}),
+]
+
+# Production starting tomorrow (planned by Odoo's scheduler), stock-neutral so
+# today's free stock is unchanged; deadline at the end of tomorrow's shift.
+MANUFACTURING_ORDERS += [
+    ManufacturingOrder(
+        "GEN-MO-001", "SA-CTL-STD", 6, -1, "confirmed", hour_utc=1, stock_neutral=True, deadline_in_days=1
+    ),
+    ManufacturingOrder("GEN-MO-002", "SA-DSP", 6, -1, "confirmed", hour_utc=1, stock_neutral=True, deadline_in_days=1),
+    ManufacturingOrder("GEN-MO-003", "KIT-HUB", 2, -1, "confirmed", hour_utc=2, stock_neutral=True, deadline_in_days=1),
+    ManufacturingOrder("GEN-MO-004", "KIT-MID", 2, -1, "confirmed", hour_utc=3, stock_neutral=True, deadline_in_days=1),
+]
+
+ACTIVITIES = [
+    Activity(
+        "sale.order",
+        "GEN-SO-013",
+        "call",
+        "Confirm delivery time with customer",
+        1,
+        "Delivery is promised for tomorrow; confirm the time window.",
+    ),
+    Activity(
+        "sale.order",
+        "GEN-SO-014",
+        "email",
+        "Send shipping documents",
+        1,
+        "Packing list and commercial invoice before dispatch.",
+    ),
+    Activity(
+        "purchase.order",
+        "GEN-PO-001",
+        "todo",
+        "Check receipt of fasteners and boxes",
+        1,
+        "Count against the order on arrival.",
+    ),
+    Activity(
+        "mrp.production",
+        "GEN-MO-004",
+        "todo",
+        "Verify components before kitting",
+        1,
+        "Mid-drive units and display units must be on the line by 09:00.",
+    ),
+    Activity(
+        "mrp.production",
+        "SEED-MO-005",
+        "todo",
+        "Escalate SA-DRV-HP shortage",
+        1,
+        "MO is scheduled but its drive units are not available.",
+    ),
 ]
