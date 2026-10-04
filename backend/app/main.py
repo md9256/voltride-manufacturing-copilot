@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.api import chat, dashboard, health, planning
+from app.api import actions, audit, chat, dashboard, health, intake, planning
 from app.config import get_settings
 from app.models.migrate import upgrade_to_head
 from app.odoo import OdooAuthError, OdooError
@@ -26,11 +26,14 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="VoltRide Manufacturing Copilot", version="0.3.0", lifespan=lifespan)
+app = FastAPI(title="VoltRide Manufacturing Copilot", version="0.4.0", lifespan=lifespan)
 app.include_router(health.router)
 app.include_router(dashboard.router)
 app.include_router(planning.router)
 app.include_router(chat.router)
+app.include_router(actions.router)
+app.include_router(audit.router)
+app.include_router(intake.router)
 
 
 @app.exception_handler(OdooError)

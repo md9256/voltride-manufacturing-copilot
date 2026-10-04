@@ -2,7 +2,11 @@
 
 import json
 
+from sqlalchemy import select
+
 from app.ai.providers import LLMError, LLMProvider, TextDelta, ToolCall, TurnResult
+from app.ai.tools import ToolContext, ToolRunner
+from app.models.actions import AuditEntry, ProposedAction
 from app.services import chat_store
 from app.services.chat import MAX_TOOL_ROUNDS, history_of, run_chat_turn
 from tests.fakes import FakeOdooClient
@@ -16,9 +20,17 @@ class ScriptedProvider(LLMProvider):
     name = "fake"
     model = "fake-1"
 
-    def __init__(self, turns):
+    def __init__(self, turns, extraction: dict | None = None):
         self.turns = list(turns)
         self.requests: list[dict] = []
+        self.extraction = extraction  # what extract_pdf returns
+        self.extracted: list[bytes] = []
+
+    async def extract_pdf(self, pdf, instruction, schema):
+        self.extracted.append(pdf)
+        if isinstance(self.extraction, Exception):
+            raise self.extraction
+        return self.extraction
 
     def user_message(self, text):
         return [{"role": "user", "content": text}]
@@ -154,3 +166,49 @@ async def test_odoo_down_does_not_block_chat(db):
     events, _ = await chat(db, provider, odoo=odoo)
     assert next(e for e in events if e["type"] == "tool_finished")["ok"] is False
     assert types(events)[-1] == "done"
+
+
+async def test_draft_tool_creates_pending_proposal_and_writes_nothing(db):
+    odoo = FakeOdooClient()
+    shortages = {"shortages_for": {"product": "KIT", "quantity": 5, "count_incoming": False}}
+    provider = ScriptedProvider(
+        [{"calls": [("draft_purchase_orders", shortages)]}, {"deltas": ["Proposal ready for your review."]}]
+    )
+    events, conv = await chat(db, provider, "order what we need for 5 kits", odoo=odoo)
+
+    assert types(events) == ["tool_started", "action_proposed", "tool_finished", "text", "done"]
+    proposed = events[1]["action"]
+    assert proposed["status"] == "pending"
+    assert proposed["payload"]["orders"][0]["lines"][0]["code"] == "CHIP"
+    assert odoo.created == []  # nothing written
+
+    told = json.loads(provider.requests[1]["history"][-1]["content"])
+    assert told["status"] == "awaiting_user_confirmation"
+    assert "Nothing has been created" in told["important"]
+    assert told["proposal_id"] == proposed["id"]
+
+    action = await db.get(ProposedAction, proposed["id"])
+    assert (action.owner_id, action.conversation_id, action.source) == (OWNER, conv.id, "chat")
+    assert conv.messages[2].display["results"][0]["action_id"] == proposed["id"]
+
+    rows = (await db.scalars(select(AuditEntry).order_by(AuditEntry.id))).all()
+    assert [(r.kind, r.name) for r in rows] == [("action", "proposed"), ("tool_call", "draft_purchase_orders")]
+    assert rows[1].question == "order what we need for 5 kits"
+    assert rows[1].duration_ms is not None and rows[1].provider == "fake"
+
+
+async def test_draft_tool_errors_are_recoverable(db):
+    provider = ScriptedProvider(
+        [{"calls": [("draft_purchase_orders", {"lines": [{"product": "CTL", "quantity": 1}]})]}, {"deltas": ["ok"]}]
+    )
+    events, _ = await chat(db, provider)
+    assert next(e for e in events if e["type"] == "tool_finished")["ok"] is False
+    assert "manufactured in-house" in json.loads(provider.requests[1]["history"][-1]["content"])["error"]
+    assert "action_proposed" not in types(events)
+
+
+def test_draft_tool_needs_exactly_one_mode():
+    runner = ToolRunner(ToolContext(FakeOdooClient()))
+    assert not runner.run("draft_purchase_orders", {}).ok
+    both = {"lines": [{"product": "CHIP", "quantity": 1}], "shortages_for": {"product": "KIT", "quantity": 1}}
+    assert not runner.run("draft_purchase_orders", both).ok

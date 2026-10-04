@@ -22,4 +22,9 @@ def get_odoo_client() -> OdooClient:
     if not (settings.odoo_url and settings.odoo_db and settings.odoo_api_key):
         raise RuntimeError("ODOO_URL, ODOO_DB and ODOO_API_KEY must be set when ODOO_MODE=live")
     rpc = OdooRpc(settings.odoo_url, settings.odoo_db, settings.odoo_api_key, timeout_s=settings.odoo_timeout_s)
-    return LiveOdooClient(rpc)
+    write_rpc = (
+        OdooRpc(settings.odoo_url, settings.odoo_db, settings.odoo_write_api_key, timeout_s=settings.odoo_timeout_s)
+        if settings.odoo_write_api_key
+        else None
+    )
+    return LiveOdooClient(rpc, write_rpc=write_rpc, base_url=settings.odoo_url)

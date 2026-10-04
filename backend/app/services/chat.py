@@ -12,6 +12,8 @@ step, cap the number of rounds, and support two providers with one loop.
 from __future__ import annotations
 
 import asyncio
+import json
+import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -23,7 +25,7 @@ from app.ai.providers import LLMError, LLMProvider, TextDelta, ToolCall, TurnRes
 from app.ai.tools import TOOLS, ToolContext, ToolOutcome, ToolRunner
 from app.models.chat import Conversation
 from app.odoo import OdooClient, OdooError
-from app.services import chat_store
+from app.services import actions, audit, chat_store
 
 MAX_TOOL_ROUNDS = 8
 
@@ -99,18 +101,52 @@ async def run_chat_turn(
         for call in result.tool_calls:
             yield ChatEvent("tool_started", {"id": call.id, "name": call.name, "input": call.arguments})
         outcomes = await _run_tools(runner, result.tool_calls)
-        for call, outcome in outcomes:
+
+        action_ids: dict[str, str] = {}
+        for call, outcome, duration_ms in outcomes:
+            if outcome.proposal is not None:
+                action = await actions.create_proposal(
+                    session,
+                    owner_id=conv.owner_id,
+                    conversation_id=conv.id,
+                    proposal=outcome.proposal,
+                    source="chat",
+                    question=text,
+                )
+                action_ids[call.id] = action.id
+                outcome.content = _proposal_message(action.id, outcome)
+                view = actions.to_view(action).model_dump(mode="json")
+                yield ChatEvent("action_proposed", {"tool_call_id": call.id, "action": view})
+            await audit.record(
+                session,
+                kind="tool_call",
+                name=call.name,
+                owner_id=conv.owner_id,
+                conversation_id=conv.id,
+                question=text,
+                params=call.arguments if isinstance(call.arguments, dict) else {"raw": call.arguments},
+                result=outcome.content,
+                ok=outcome.ok,
+                duration_ms=duration_ms,
+                provider=provider.name,
+                model=provider.model,
+            )
             yield ChatEvent(
                 "tool_finished", {"id": call.id, "name": call.name, "ok": outcome.ok, "summary": outcome.summary}
             )
 
-        native = provider.tool_results(outcomes)
+        pairs = [(call, outcome) for call, outcome, _ in outcomes]
+        native = provider.tool_results(pairs)
         await chat_store.append_message(
             session,
             conv,
             role="tool",
             native=native,
-            display={"results": [{"id": c.id, "ok": o.ok, "summary": o.summary} for c, o in outcomes]},
+            display={
+                "results": [
+                    {"id": c.id, "ok": o.ok, "summary": o.summary, "action_id": action_ids.get(c.id)} for c, o in pairs
+                ]
+            },
         )
         history.extend(native)
 
@@ -118,11 +154,46 @@ async def run_chat_turn(
     yield ChatEvent("error", {"message": "Stopped after too many tool calls. Try a more specific question."})
 
 
-async def _run_tools(runner: ToolRunner, calls: list[ToolCall]) -> list[tuple[ToolCall, ToolOutcome]]:
-    """Run one turn's tool calls concurrently (they are read-only).
+async def _run_tools(runner: ToolRunner, calls: list[ToolCall]) -> list[tuple[ToolCall, ToolOutcome, float]]:
+    """Run one turn's tool calls concurrently (none of them write to the ERP).
 
     Tools are synchronous (blocking Odoo HTTP calls), so each runs in a worker
-    thread; results keep the order of the calls.
+    thread; results keep the order of the calls, with durations for the audit log.
     """
-    outcomes = await asyncio.gather(*(asyncio.to_thread(runner.run, c.name, c.arguments) for c in calls))
-    return list(zip(calls, outcomes, strict=True))
+
+    def timed(call: ToolCall) -> tuple[ToolOutcome, float]:
+        start = time.perf_counter()
+        outcome = runner.run(call.name, call.arguments)
+        return outcome, round((time.perf_counter() - start) * 1000, 1)
+
+    results = await asyncio.gather(*(asyncio.to_thread(timed, c) for c in calls))
+    return [(call, outcome, ms) for call, (outcome, ms) in zip(calls, results, strict=True)]
+
+
+def _proposal_message(action_id: str, outcome: ToolOutcome) -> str:
+    """What the model is told after proposing: exactly what exists, and what does not."""
+    p = outcome.proposal
+    return json.dumps(
+        {
+            "proposal_id": action_id,
+            "status": "awaiting_user_confirmation",
+            "important": "Nothing has been created in the ERP. The user sees this proposal with Confirm and "
+            "Reject buttons. Summarise it briefly and ask them to review it; do not say it was ordered.",
+            "summary": p.summary,
+            "currency": p.currency,
+            "total": p.total,
+            "orders": [
+                {
+                    "supplier": o.supplier,
+                    "total": o.total,
+                    "lead_days": o.lead_days,
+                    "lines": [
+                        {"code": ln.code, "quantity": ln.quantity, "unit_price": ln.unit_price} for ln in o.lines
+                    ],
+                }
+                for o in p.orders
+            ],
+            "warnings": p.warnings,
+        },
+        ensure_ascii=False,
+    )

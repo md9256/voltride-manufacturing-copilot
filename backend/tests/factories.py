@@ -78,10 +78,10 @@ def mini_voltride(**overrides) -> ManufacturingData:
         KIT: product(KIT, "KIT"),
         CTL: product(CTL, "CTL"),
         DSP: product(DSP, "DSP"),
-        CHIP: product(CHIP, "CHIP", free=3, cost=60, suppliers=[supplier("ChipCo", 60, lead_days=35)]),
-        PCB: product(PCB, "PCB", free=100, cost=140, suppliers=[supplier("BoardCo", 140, lead_days=14)]),
-        LCD: product(LCD, "LCD", free=100, cost=160, suppliers=[supplier("PanelCo", 160, lead_days=21)]),
-        BOX: product(BOX, "BOX", free=100, cost=20, suppliers=[supplier("BoxCo", 20, lead_days=7)]),
+        CHIP: product(CHIP, "CHIP", free=3, cost=60, suppliers=[supplier("ChipCo", 60, lead_days=35, sid=201)]),
+        PCB: product(PCB, "PCB", free=100, cost=140, suppliers=[supplier("BoardCo", 140, lead_days=14, sid=202)]),
+        LCD: product(LCD, "LCD", free=100, cost=160, suppliers=[supplier("PanelCo", 160, lead_days=21, sid=203)]),
+        BOX: product(BOX, "BOX", free=100, cost=20, suppliers=[supplier("BoxCo", 20, lead_days=7, sid=204)]),
     }
     by_code = {p.code: pid for pid, p in products.items()}
     for code, replacement in overrides.items():

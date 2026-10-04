@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import main
-from app.api import chat as chat_api
+from app.api import deps as chat_api
 from app.main import app
 from app.odoo import get_odoo_client
 from tests.conftest import SqliteDb

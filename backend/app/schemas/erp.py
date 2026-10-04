@@ -98,3 +98,27 @@ class WorkCenter(BaseModel):
     hours_per_day: float
     efficiency: float  # 1.0 = 100 %
     cost_per_hour: float
+
+
+class SupplierSummary(BaseModel):
+    id: int
+    name: str
+    ref: str | None
+
+
+class PurchaseLineDraft(BaseModel):
+    product_id: int
+    quantity: float
+    unit_price: float
+
+
+class PurchaseOrderRef(BaseModel):
+    id: int
+    name: str  # e.g. P00003, or DEMO-P0001 in demo mode
+    supplier_id: int
+    supplier: str
+    partner_ref: str | None  # the vendor's own reference, e.g. their quote number
+    origin: str | None
+    state: str
+    amount_total: float
+    url: str | None = None  # link to the record in Odoo, when there is one

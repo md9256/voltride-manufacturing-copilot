@@ -16,20 +16,28 @@ from app.schemas.erp import (
     BomOperation,
     ManufacturingOrder,
     Product,
+    PurchaseLineDraft,
+    PurchaseOrderRef,
     SaleOrder,
     StockLevel,
     SupplierPrice,
+    SupplierSummary,
     WorkCenter,
 )
 
 ODOO_DT = "%Y-%m-%d %H:%M:%S"
+_PO_FIELDS = ["name", "partner_id", "partner_ref", "origin", "state", "amount_total"]
 
 
 class LiveOdooClient(OdooClient):
     mode = "live"
 
-    def __init__(self, rpc: OdooRpc) -> None:
+    def __init__(self, rpc: OdooRpc, *, write_rpc: OdooRpc | None = None, base_url: str = "") -> None:
         self._rpc = rpc
+        # Writes can use a separate, less privileged Odoo user (ODOO_WRITE_API_KEY,
+        # e.g. Purchase rights only); without one they share the read connection.
+        self._write_rpc = write_rpc or rpc
+        self._base_url = base_url.rstrip("/")
 
     def server_version(self) -> str:
         # context_get is the cheapest authenticated call; it proves the key works.
@@ -204,6 +212,58 @@ class LiveOdooClient(OdooClient):
             )
             for r in rows
         ]
+
+    def list_suppliers(self) -> list[SupplierSummary]:
+        rows = self._rpc.search_read("res.partner", [["supplier_rank", ">", 0]], ["name", "ref"], order="name")
+        return [SupplierSummary(id=r["id"], name=r["name"], ref=r["ref"] or None) for r in rows]
+
+    def find_purchase_orders(
+        self, *, supplier_id: int | None = None, origin: str | None = None, partner_ref: str | None = None
+    ) -> list[PurchaseOrderRef]:
+        domain: list = []
+        if supplier_id is not None:
+            domain.append(["partner_id", "=", supplier_id])
+        if origin is not None:
+            domain.append(["origin", "=", origin])
+        if partner_ref is not None:
+            domain.append(["partner_ref", "=ilike", partner_ref])  # quote numbers: case-insensitive
+        rows = self._rpc.search_read("purchase.order", domain, _PO_FIELDS, order="id")
+        return [self._po_ref(r) for r in rows]
+
+    def create_draft_purchase_order(
+        self,
+        supplier_id: int,
+        lines: list[PurchaseLineDraft],
+        *,
+        origin: str,
+        partner_ref: str | None = None,
+    ) -> PurchaseOrderRef:
+        vals: dict = {
+            "partner_id": supplier_id,
+            "origin": origin,
+            "order_line": [
+                [0, 0, {"product_id": line.product_id, "product_qty": line.quantity, "price_unit": line.unit_price}]
+                for line in lines
+            ],
+        }
+        if partner_ref:
+            vals["partner_ref"] = partner_ref
+        po_id = self._write_rpc.create("purchase.order", vals)
+        [row] = self._rpc.call("purchase.order", "read", ids=[po_id], fields=_PO_FIELDS)
+        return self._po_ref(row)
+
+    def _po_ref(self, r: dict) -> PurchaseOrderRef:
+        return PurchaseOrderRef(
+            id=r["id"],
+            name=r["name"],
+            supplier_id=r["partner_id"][0],
+            supplier=r["partner_id"][1],
+            partner_ref=r["partner_ref"] or None,
+            origin=r["origin"] or None,
+            state=r["state"],
+            amount_total=r["amount_total"],
+            url=f"{self._base_url}/odoo/purchase/{r['id']}" if self._base_url else None,
+        )
 
     def _read(self, model: str, ids: list[int], fields: list[str]) -> list[dict]:
         return self._rpc.call(model, "read", ids=ids, fields=fields) if ids else []

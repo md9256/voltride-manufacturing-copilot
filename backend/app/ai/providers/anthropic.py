@@ -13,6 +13,8 @@
 
 from __future__ import annotations
 
+import base64
+import json
 from collections.abc import AsyncIterator
 
 import anthropic
@@ -119,3 +121,45 @@ class AnthropicProvider(LLMProvider):
         yield TurnResult(
             native=[{"role": "assistant", "content": content}], text=text, tool_calls=tool_calls, stop=stop
         )
+
+    async def extract_pdf(self, pdf: bytes, instruction: str, schema: dict) -> dict:
+        # Native PDF document block + structured output (output_config.format),
+        # which guarantees the first text block is JSON matching the schema.
+        request: dict = {
+            "model": self.model,
+            "max_tokens": MAX_OUTPUT_TOKENS,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "document",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "application/pdf",
+                                "data": base64.b64encode(pdf).decode(),
+                            },
+                        },
+                        {"type": "text", "text": instruction},
+                    ],
+                }
+            ],
+            "output_config": {"format": {"type": "json_schema", "schema": schema}},
+        }
+        if self._effort:
+            request["output_config"]["effort"] = self._effort
+        try:
+            message = await self._client.messages.create(**request)
+        except anthropic.RateLimitError as exc:
+            raise LLMError("The AI service is rate-limited right now. Please try again shortly.") from exc
+        except anthropic.APIStatusError as exc:
+            raise LLMError(f"The AI service returned an error (HTTP {exc.status_code}).") from exc
+        except anthropic.APIConnectionError as exc:
+            raise LLMError("Could not reach the AI service. Please try again.") from exc
+        if message.stop_reason == "refusal":
+            raise LLMError("The model declined to read this document.")
+        text = next((b.text for b in message.content if b.type == "text"), "")
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise LLMError("The AI did not return valid JSON for this document.") from exc

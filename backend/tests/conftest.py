@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from app.models import chat  # noqa: F401  (registers tables)
+from app.models import actions, chat  # noqa: F401  (registers tables)
 from app.models.db import Base
 
 

@@ -9,7 +9,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 GEMINI_OPENAI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
-DEFAULT_MODELS = {"gemini": "gemini-flash-latest", "anthropic": "claude-opus-5-5"}
+# Pinned versions, not "-latest" aliases: an alias can move to a model with a
+# different free-tier quota (gemini-flash-latest started sharing
+# gemini-3.8-flash's 20 requests/day) and change behaviour without a deploy.
+DEFAULT_MODELS = {"gemini": "gemini-3.5-flash", "anthropic": "claude-opus-5-5"}
 
 
 class Settings(BaseSettings):
@@ -20,6 +23,8 @@ class Settings(BaseSettings):
     odoo_db: str = ""
     odoo_user: str = ""
     odoo_api_key: str = ""
+    # Optional key of a separate Odoo user (Purchase rights only) for confirmed writes.
+    odoo_write_api_key: str = ""
     odoo_timeout_s: float = 15.0
     # Demo mode only; empty means the bundled snapshot (app/odoo/snapshot/voltride.json).
     odoo_snapshot_path: str = ""

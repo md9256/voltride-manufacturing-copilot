@@ -3,7 +3,14 @@
 from datetime import UTC, datetime
 
 from app.odoo import OdooClient, OdooError
-from app.schemas.erp import ManufacturingOrder, SaleOrder, StockLevel
+from app.schemas.erp import (
+    ManufacturingOrder,
+    PurchaseLineDraft,
+    PurchaseOrderRef,
+    SaleOrder,
+    StockLevel,
+    SupplierSummary,
+)
 from tests.factories import mini_voltride
 
 
@@ -68,6 +75,9 @@ class FakeOdooClient(OdooClient):
         self.products = list(mini.products.values())
         self.boms = list(mini.boms.values())
         self.work_centers = list(mini.work_centers.values())
+        self.purchase_orders: list[PurchaseOrderRef] = []  # existing POs (seeded per test)
+        self.created: list[tuple[int, list[PurchaseLineDraft], str, str | None]] = []  # every write
+        self.fail_writes = False
 
     def _check(self) -> None:
         if self.fail:
@@ -103,3 +113,36 @@ class FakeOdooClient(OdooClient):
     def list_work_centers(self):
         self._check()
         return self.work_centers
+
+    def list_suppliers(self):
+        self._check()
+        names = {sp.supplier_id: sp.supplier for p in self.products for sp in p.suppliers}
+        return [SupplierSummary(id=i, name=n, ref=None) for i, n in sorted(names.items())]
+
+    def find_purchase_orders(self, *, supplier_id=None, origin=None, partner_ref=None):
+        self._check()
+        return [
+            po
+            for po in self.purchase_orders
+            if (supplier_id is None or po.supplier_id == supplier_id)
+            and (origin is None or po.origin == origin)
+            and (partner_ref is None or (po.partner_ref or "").lower() == partner_ref.lower())
+        ]
+
+    def create_draft_purchase_order(self, supplier_id, lines, *, origin, partner_ref=None):
+        self._check()
+        if self.fail_writes:
+            raise OdooError("HTTP 500: write failed", status=500)
+        self.created.append((supplier_id, lines, origin, partner_ref))
+        po = PurchaseOrderRef(
+            id=100 + len(self.created),
+            name=f"P{100 + len(self.created):05d}",
+            supplier_id=supplier_id,
+            supplier=next(s.name for s in self.list_suppliers() if s.id == supplier_id),
+            partner_ref=partner_ref,
+            origin=origin,
+            state="draft",
+            amount_total=sum(line.quantity * line.unit_price for line in lines),
+        )
+        self.purchase_orders.append(po)
+        return po

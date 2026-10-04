@@ -11,6 +11,9 @@ Design rules this module enforces:
 - Failures the model can recover from (unknown product, ambiguous name,
   invalid arguments) come back as error results it can read and act on,
   never as exceptions that end the conversation.
+- No tool writes to the ERP. draft_purchase_orders only *builds* a proposal;
+  the chat loop stores it and shows it to the user, and only the user's
+  confirmation (a separate endpoint the model cannot call) executes it.
 """
 
 from __future__ import annotations
@@ -24,13 +27,15 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from app.odoo import OdooClient, OdooError
+from app.schemas.actions import PurchaseProposal
 from app.schemas.erp import Product
 from app.services import dashboard as dash_rules
 from app.services.bom import BomError, ManufacturingData, explode, unit_costs
 from app.services.planner import plan
+from app.services.purchasing import LineRequest, ProposalError, build_proposal, proposal_for_shortages
 
 
 class ToolError(Exception):
@@ -75,7 +80,7 @@ class Tool:
     name: str
     description: str
     input_model: type[_Input]
-    handler: Callable[[ToolContext, Any], dict]
+    handler: Callable[[ToolContext, Any], dict | PurchaseProposal]
 
     def json_schema(self) -> dict:
         schema = self.input_model.model_json_schema()
@@ -88,6 +93,7 @@ class ToolOutcome:
     ok: bool
     content: str  # JSON text sent back to the model
     summary: str  # one line for the UI
+    proposal: PurchaseProposal | None = None  # set by write tools; persisted by the chat loop
 
 
 # --------------------------------------------------------------------------
@@ -357,6 +363,64 @@ def get_sales_summary(ctx: ToolContext, args: SalesSummaryInput) -> dict:
     }
 
 
+class ShortagesFor(_Input):
+    product: str = Field(description="Manufactured product to build, e.g. KIT-MID.")
+    quantity: float = Field(gt=0, le=10_000)
+    count_incoming: bool = Field(True, description="Treat expected receipts as available (order less).")
+
+
+class DraftLine(_Input):
+    product: str = Field(description="Code or name of a purchased component.")
+    quantity: float = Field(gt=0, le=100_000)
+    supplier: str | None = Field(None, description="Supplier name. Omit to use the cheapest suitable supplier.")
+
+
+class DraftPurchaseOrdersInput(_Input):
+    shortages_for: ShortagesFor | None = Field(
+        None, description="Order exactly the components that are short for building this quantity."
+    )
+    lines: list[DraftLine] | None = Field(None, max_length=30, description="Or: explicit components and quantities.")
+
+    @model_validator(mode="after")
+    def exactly_one(self):
+        if (self.shortages_for is None) == (not self.lines):
+            raise ValueError("give either shortages_for or lines, not both and not neither")
+        return self
+
+
+def _resolve_supplier(product: Product, name: str) -> int:
+    name_l = name.strip().lower()
+    for sp in product.suppliers:
+        if sp.supplier.lower() == name_l or name_l in sp.supplier.lower():
+            return sp.supplier_id
+    options = ", ".join(sp.supplier for sp in product.suppliers) or "none"
+    raise ToolError(f"{product.code} is not sold by '{name}'. Its suppliers: {options}.")
+
+
+def draft_purchase_orders(ctx: ToolContext, args: DraftPurchaseOrdersInput) -> PurchaseProposal:
+    data = ctx.data
+    try:
+        if args.shortages_for:
+            product = resolve_product(data, args.shortages_for.product)
+            if product.id not in data.boms:
+                raise ToolError(f"{product.code} is purchased, not manufactured; order it with `lines` instead.")
+            return proposal_for_shortages(
+                data,
+                product.id,
+                args.shortages_for.quantity,
+                count_incoming=args.shortages_for.count_incoming,
+                currency=ctx.currency,
+            )
+        requests = []
+        for line in args.lines or []:
+            product = resolve_product(data, line.product)
+            supplier_id = _resolve_supplier(product, line.supplier) if line.supplier else None
+            requests.append(LineRequest(product_id=product.id, quantity=line.quantity, supplier_id=supplier_id))
+        return build_proposal(data, requests, currency=ctx.currency, summary="Purchase order request from chat")
+    except ProposalError as exc:
+        raise ToolError(str(exc)) from None
+
+
 TOOLS: list[Tool] = [
     Tool(
         "search_products",
@@ -400,6 +464,15 @@ TOOLS: list[Tool] = [
         list_manufacturing_orders,
     ),
     Tool(
+        "draft_purchase_orders",
+        "Prepare draft purchase orders for the user to review. This does NOT create anything: it returns a "
+        "proposal that is shown to the user with Confirm and Reject buttons, and only the user's confirmation "
+        "creates draft RFQs in the ERP. Use shortages_for to order what is short for a build, or lines for "
+        "explicit components.",
+        DraftPurchaseOrdersInput,
+        draft_purchase_orders,
+    ),
+    Tool(
         "get_sales_summary",
         "Sales overview: open orders and their value, confirmed orders per week, top customers, and the "
         "list of open orders.",
@@ -439,6 +512,10 @@ class ToolRunner:
         except OdooError:
             # Don't leak connection details to the model; the UI shows a generic failure.
             return _error("The ERP system could not be reached. Tell the user to try again shortly.", "ERP unavailable")
+        if isinstance(result, PurchaseProposal):
+            # The chat loop stores the proposal and replaces this content with
+            # the proposal id; the model never sees a write it could claim happened.
+            return ToolOutcome(ok=True, content="", summary="proposal ready", proposal=result)
         return ToolOutcome(ok=True, content=json.dumps(result, ensure_ascii=False, default=str), summary="ok")
 
 

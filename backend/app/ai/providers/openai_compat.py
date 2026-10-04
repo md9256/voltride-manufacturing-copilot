@@ -14,7 +14,9 @@ Two Gemini behaviours, verified against the live API, shape this code:
 
 from __future__ import annotations
 
+import base64
 import json
+import re
 from collections.abc import AsyncIterator
 
 import openai
@@ -78,7 +80,7 @@ class OpenAICompatProvider(LLMProvider):
                     _merge_tool_call_delta(calls.setdefault(tc.index or 0, {}), tc.to_dict())
                 finish = choice.finish_reason or finish
         except openai.APIStatusError as exc:
-            raise LLMError(_status_message(exc.status_code)) from exc
+            raise LLMError(_status_message(exc.status_code, str(exc))) from exc
         except openai.APIConnectionError as exc:
             raise LLMError("Could not reach the AI service. Please try again.") from exc
 
@@ -102,6 +104,35 @@ class OpenAICompatProvider(LLMProvider):
             stop = "end"
         yield TurnResult(native=[assistant], text=text, tool_calls=tool_calls, stop=stop)
 
+    async def extract_pdf(self, pdf: bytes, instruction: str, schema: dict) -> dict:
+        # Gemini's OpenAI-compatible endpoint accepts a PDF as a data URL in an
+        # image_url part (a `file` part is rejected with HTTP 400 - verified).
+        data_url = "data:application/pdf;base64," + base64.b64encode(pdf).decode()
+        try:
+            response = await self._client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "image_url", "image_url": {"url": data_url}},
+                            {"type": "text", "text": instruction},
+                        ],
+                    }
+                ],
+                response_format={"type": "json_schema", "json_schema": {"name": "extraction", "schema": schema}},
+                max_tokens=MAX_OUTPUT_TOKENS,
+            )
+        except openai.APIStatusError as exc:
+            raise LLMError(_status_message(exc.status_code, str(exc))) from exc
+        except openai.APIConnectionError as exc:
+            raise LLMError("Could not reach the AI service. Please try again.") from exc
+        content = response.choices[0].message.content if response.choices else None
+        try:
+            return json.loads(content or "")
+        except json.JSONDecodeError as exc:
+            raise LLMError("The AI did not return valid JSON for this document.") from exc
+
 
 def _merge_tool_call_delta(acc: dict, delta: dict) -> None:
     """Accumulate one streamed tool-call fragment into the full native call."""
@@ -124,8 +155,14 @@ def _parse_arguments(raw: str):
         return raw  # the ToolRunner reports non-object arguments back to the model
 
 
-def _status_message(status: int) -> str:
+def _status_message(status: int, detail: str = "") -> str:
     if status == 429:
+        # Google's free tier has per-minute and per-day quotas; its message says
+        # which ("Please retry in 11h10m..."), so pass the wait time on.
+        wait = re.search(r"retry in ((?:\d+h)?(?:\d+m)?[\d.]+s)", detail)
+        if wait and "h" in wait.group(1):
+            hours = wait.group(1).split("h")[0]
+            return f"The AI service's free daily quota is used up; it resets in about {hours} h."
         return "The AI service is rate-limited right now (free tier). Please wait a minute and try again."
     if status in (500, 502, 503, 504):
         return "The AI service is overloaded or unavailable. Please try again shortly."

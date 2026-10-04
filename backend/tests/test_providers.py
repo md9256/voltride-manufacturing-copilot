@@ -252,3 +252,14 @@ async def test_anthropic_rate_limit_becomes_llm_error():
     error = anthropic.RateLimitError("slow down", response=response, body=None)
     with pytest.raises(LLMError, match="rate-limited"):
         await collect(claude(FakeAnthropic([error])))
+
+
+async def test_openai_daily_quota_message_includes_reset_time():
+    response = httpx2.Response(429, request=httpx2.Request("POST", "http://x"))
+    error = openai.APIStatusError(
+        "Quota exceeded for metric: free_tier_requests, limit: 20. Please retry in 11h10m56.19s.",
+        response=response,
+        body=None,
+    )
+    with pytest.raises(LLMError, match="resets in about 11 h"):
+        await collect(gemini(FakeOpenAI(error=error)))

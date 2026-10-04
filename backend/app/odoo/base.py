@@ -10,7 +10,17 @@ domain language, and would leak Odoo field names into business logic.
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-from app.schemas.erp import Bom, ManufacturingOrder, Product, SaleOrder, StockLevel, WorkCenter
+from app.schemas.erp import (
+    Bom,
+    ManufacturingOrder,
+    Product,
+    PurchaseLineDraft,
+    PurchaseOrderRef,
+    SaleOrder,
+    StockLevel,
+    SupplierSummary,
+    WorkCenter,
+)
 
 
 class OdooClient(ABC):
@@ -47,3 +57,28 @@ class OdooClient(ABC):
     @abstractmethod
     def list_work_centers(self) -> list[WorkCenter]:
         """Every work center with its daily working hours."""
+
+    @abstractmethod
+    def list_suppliers(self) -> list[SupplierSummary]:
+        """Every vendor (partner with supplier rank)."""
+
+    @abstractmethod
+    def find_purchase_orders(
+        self, *, supplier_id: int | None = None, origin: str | None = None, partner_ref: str | None = None
+    ) -> list[PurchaseOrderRef]:
+        """Purchase orders matching all given filters (used for idempotency and duplicate checks)."""
+
+    # --- writes --------------------------------------------------------------
+    # Only services/actions.py calls this, and only after the user has
+    # explicitly confirmed a proposal. The AI tools have no write path.
+
+    @abstractmethod
+    def create_draft_purchase_order(
+        self,
+        supplier_id: int,
+        lines: list[PurchaseLineDraft],
+        *,
+        origin: str,
+        partner_ref: str | None = None,
+    ) -> PurchaseOrderRef:
+        """Create a purchase order in draft (RFQ) state. Never confirms it."""

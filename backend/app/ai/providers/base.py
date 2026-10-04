@@ -58,3 +58,7 @@ class LLMProvider(ABC):
     @abstractmethod
     def stream_turn(self, system: str, history: list[dict], tools: list[Tool]) -> AsyncIterator[TextDelta | TurnResult]:
         """Stream one assistant turn: TextDelta items, then exactly one TurnResult."""
+
+    @abstractmethod
+    async def extract_pdf(self, pdf: bytes, instruction: str, schema: dict) -> dict:
+        """Read a PDF and return JSON matching `schema` (provider structured output)."""
