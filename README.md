@@ -4,7 +4,7 @@ A web app on top of Odoo for a fictional e-bike drive-system manufacturer:
 production dashboard, BOM explorer and planner, and an AI assistant that works
 through typed, validated tools. See [SPEC.md](SPEC.md) for the full plan.
 
-> Work in progress. Phases 1-2 (dashboard, BOM explorer, planner, demo mode) are done; the full README with the
+> Work in progress. Phases 1-3 (dashboard, BOM explorer, planner, demo mode, read-only AI assistant) are done; the full README with the
 > architecture diagram, deployment and AI safety design lands in Phase 6.
 
 ## Layout
@@ -19,6 +19,14 @@ The back end reads Odoo only through the `OdooClient` interface in
 (`ODOO_MODE=demo`), so the public demo survives the Odoo trial expiring. BOM
 explosion, MRP netting and the planner live in `backend/app/services` as pure
 functions and are tested with fixtures, without Odoo.
+
+## AI assistant
+
+The assistant reads ERP data only through seven typed, read-only tools in
+`backend/app/ai/tools.py` (inputs validated with Pydantic before running). It runs on
+Google Gemini's free tier by default (`LLM_PROVIDER=gemini`) or on Claude
+(`LLM_PROVIDER=anthropic`); chat history is stored in Postgres (Neon) and the
+schema is applied by Alembic at startup.
 
 ## Local development
 
