@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     odoo_user: str = ""
     odoo_api_key: str = ""
     odoo_timeout_s: float = 15.0
+    # Demo mode only; empty means the bundled snapshot (app/odoo/snapshot/voltride.json).
+    odoo_snapshot_path: str = ""
 
 
 @lru_cache

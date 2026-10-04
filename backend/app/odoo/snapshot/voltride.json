@@ -1,0 +1,1302 @@
+{
+ "format": 1,
+ "exported_at": "2026-10-04T12:01:22.870756Z",
+ "server_version": "20.0+e",
+ "currency": "HKD",
+ "sale_orders": [
+  {
+   "id": 10,
+   "name": "S00010",
+   "customer": "Urban Pedal Co.",
+   "state": "draft",
+   "delivery_status": null,
+   "date_order": "2026-10-02T09:00:00Z",
+   "commitment_date": null,
+   "amount_total": 98400.0
+  },
+  {
+   "id": 9,
+   "name": "S00009",
+   "customer": "Alpine Cycles GmbH",
+   "state": "draft",
+   "delivery_status": null,
+   "date_order": "2026-09-29T09:00:00Z",
+   "commitment_date": null,
+   "amount_total": 51600.0
+  },
+  {
+   "id": 8,
+   "name": "S00008",
+   "customer": "Peak Trail Bikes",
+   "state": "sale",
+   "delivery_status": "pending",
+   "date_order": "2026-09-22T09:00:00Z",
+   "commitment_date": null,
+   "amount_total": 26000.0
+  },
+  {
+   "id": 7,
+   "name": "S00007",
+   "customer": "Coastline E-Bikes",
+   "state": "sale",
+   "delivery_status": "pending",
+   "date_order": "2026-09-15T09:00:00Z",
+   "commitment_date": null,
+   "amount_total": 43000.0
+  },
+  {
+   "id": 6,
+   "name": "S00006",
+   "customer": "Urban Pedal Co.",
+   "state": "sale",
+   "delivery_status": "pending",
+   "date_order": "2026-09-08T09:00:00Z",
+   "commitment_date": null,
+   "amount_total": 46400.0
+  },
+  {
+   "id": 5,
+   "name": "S00005",
+   "customer": "Alpine Cycles GmbH",
+   "state": "sale",
+   "delivery_status": "pending",
+   "date_order": "2026-09-01T09:00:00Z",
+   "commitment_date": null,
+   "amount_total": 21600.0
+  },
+  {
+   "id": 4,
+   "name": "S00004",
+   "customer": "Peak Trail Bikes",
+   "state": "sale",
+   "delivery_status": "pending",
+   "date_order": "2026-08-21T09:00:00Z",
+   "commitment_date": null,
+   "amount_total": 26000.0
+  },
+  {
+   "id": 3,
+   "name": "S00003",
+   "customer": "Coastline E-Bikes",
+   "state": "cancel",
+   "delivery_status": null,
+   "date_order": "2026-08-15T09:00:00Z",
+   "commitment_date": null,
+   "amount_total": 17200.0
+  },
+  {
+   "id": 2,
+   "name": "S00002",
+   "customer": "Urban Pedal Co.",
+   "state": "sale",
+   "delivery_status": "pending",
+   "date_order": "2026-08-04T09:00:00Z",
+   "commitment_date": null,
+   "amount_total": 36000.0
+  },
+  {
+   "id": 1,
+   "name": "S00001",
+   "customer": "Alpine Cycles GmbH",
+   "state": "sale",
+   "delivery_status": "pending",
+   "date_order": "2026-07-28T09:00:00Z",
+   "commitment_date": null,
+   "amount_total": 23200.0
+  }
+ ],
+ "manufacturing_orders": [
+  {
+   "id": 6,
+   "name": "WH/MO/00006",
+   "product_code": "KIT-MID",
+   "product_name": "VoltRide Mid-Drive Kit 250W",
+   "quantity": 5.0,
+   "state": "draft",
+   "date_start": "2026-10-09T08:00:00Z",
+   "date_finished": "2026-10-12T00:50:00Z",
+   "origin": "SEED-MO-006"
+  },
+  {
+   "id": 5,
+   "name": "WH/MO/00005",
+   "product_code": "KIT-HP",
+   "product_name": "VoltRide High-Power Kit 750W",
+   "quantity": 4.0,
+   "state": "confirmed",
+   "date_start": "2026-10-06T08:00:00Z",
+   "date_finished": "2026-10-07T00:48:00Z",
+   "origin": "SEED-MO-005"
+  },
+  {
+   "id": 4,
+   "name": "WH/MO/00004",
+   "product_code": "SA-CTL-STD",
+   "product_name": "Controller 36V (standard)",
+   "quantity": 10.0,
+   "state": "confirmed",
+   "date_start": "2026-10-03T08:00:00Z",
+   "date_finished": "2026-10-05T03:20:00Z",
+   "origin": "SEED-MO-004"
+  },
+  {
+   "id": 3,
+   "name": "WH/MO/00003",
+   "product_code": "KIT-HUB",
+   "product_name": "VoltRide Hub Motor Kit 350W",
+   "quantity": 3.0,
+   "state": "progress",
+   "date_start": "2026-10-01T08:00:00Z",
+   "date_finished": "2026-10-02T00:30:00Z",
+   "origin": "SEED-MO-003"
+  },
+  {
+   "id": 2,
+   "name": "WH/MO/00002",
+   "product_code": "KIT-MID",
+   "product_name": "VoltRide Mid-Drive Kit 250W",
+   "quantity": 2.0,
+   "state": "done",
+   "date_start": "2026-09-20T08:00:00Z",
+   "date_finished": "2026-09-20T09:02:24Z",
+   "origin": "SEED-MO-002"
+  },
+  {
+   "id": 1,
+   "name": "WH/MO/00001",
+   "product_code": "SA-DSP",
+   "product_name": "Display unit",
+   "quantity": 6.0,
+   "state": "done",
+   "date_start": "2026-09-14T08:00:00Z",
+   "date_finished": "2026-09-14T10:22:30Z",
+   "origin": "SEED-MO-001"
+  }
+ ],
+ "stock_levels": [
+  {
+   "product_id": 1,
+   "product_code": "MTR-250",
+   "product_name": "Mid-drive motor 250W",
+   "on_hand": 14.0,
+   "min_qty": 10.0,
+   "max_qty": 40.0
+  },
+  {
+   "product_id": 2,
+   "product_code": "MTR-750",
+   "product_name": "High-power motor 750W",
+   "on_hand": 3.0,
+   "min_qty": 8.0,
+   "max_qty": 24.0
+  },
+  {
+   "product_id": 3,
+   "product_code": "MTR-HUB",
+   "product_name": "Rear hub motor 350W",
+   "on_hand": 18.0,
+   "min_qty": 10.0,
+   "max_qty": 40.0
+  },
+  {
+   "product_id": 4,
+   "product_code": "PCB-CTL",
+   "product_name": "Controller PCB (bare)",
+   "on_hand": 40.0,
+   "min_qty": 20.0,
+   "max_qty": 80.0
+  },
+  {
+   "product_id": 5,
+   "product_code": "CHP-MCU",
+   "product_name": "MCU chip STM32G4",
+   "on_hand": 3.0,
+   "min_qty": 40.0,
+   "max_qty": 150.0
+  },
+  {
+   "product_id": 6,
+   "product_code": "CHP-MOS",
+   "product_name": "MOSFET power stage pack",
+   "on_hand": 12.0,
+   "min_qty": 30.0,
+   "max_qty": 100.0
+  },
+  {
+   "product_id": 7,
+   "product_code": "CAS-CTL",
+   "product_name": "Controller aluminium casing",
+   "on_hand": 45.0,
+   "min_qty": 20.0,
+   "max_qty": 80.0
+  },
+  {
+   "product_id": 8,
+   "product_code": "THM-PAD",
+   "product_name": "Thermal interface pad",
+   "on_hand": 120.0,
+   "min_qty": 40.0,
+   "max_qty": 200.0
+  },
+  {
+   "product_id": 9,
+   "product_code": "LCD-35",
+   "product_name": "3.5in colour LCD panel",
+   "on_hand": 0.0,
+   "min_qty": 15.0,
+   "max_qty": 60.0
+  },
+  {
+   "product_id": 10,
+   "product_code": "PCB-DSP",
+   "product_name": "Display PCB",
+   "on_hand": 24.0,
+   "min_qty": 15.0,
+   "max_qty": 60.0
+  },
+  {
+   "product_id": 11,
+   "product_code": "CAS-DSP",
+   "product_name": "Display housing",
+   "on_hand": 29.0,
+   "min_qty": 15.0,
+   "max_qty": 60.0
+  },
+  {
+   "product_id": 12,
+   "product_code": "BTN-PAD",
+   "product_name": "Handlebar button pad",
+   "on_hand": 34.0,
+   "min_qty": 15.0,
+   "max_qty": 60.0
+  },
+  {
+   "product_id": 13,
+   "product_code": "SNS-TRQ",
+   "product_name": "Torque sensor",
+   "on_hand": 5.0,
+   "min_qty": 12.0,
+   "max_qty": 40.0
+  },
+  {
+   "product_id": 14,
+   "product_code": "SNS-CAD",
+   "product_name": "Cadence sensor",
+   "on_hand": 25.0,
+   "min_qty": 10.0,
+   "max_qty": 40.0
+  },
+  {
+   "product_id": 15,
+   "product_code": "SNS-SPD",
+   "product_name": "Speed sensor & spoke magnet",
+   "on_hand": 48.0,
+   "min_qty": 20.0,
+   "max_qty": 80.0
+  },
+  {
+   "product_id": 16,
+   "product_code": "CBL-MAIN",
+   "product_name": "Main wiring harness",
+   "on_hand": 30.0,
+   "min_qty": 15.0,
+   "max_qty": 60.0
+  },
+  {
+   "product_id": 17,
+   "product_code": "CBL-EXT",
+   "product_name": "Motor extension cable",
+   "on_hand": 35.0,
+   "min_qty": 15.0,
+   "max_qty": 60.0
+  },
+  {
+   "product_id": 18,
+   "product_code": "CBL-BRK",
+   "product_name": "Brake cut-off sensor pair",
+   "on_hand": 58.0,
+   "min_qty": 20.0,
+   "max_qty": 80.0
+  },
+  {
+   "product_id": 19,
+   "product_code": "CON-HIG",
+   "product_name": "HIGO waterproof connector set",
+   "on_hand": 10.0,
+   "min_qty": 25.0,
+   "max_qty": 80.0
+  },
+  {
+   "product_id": 20,
+   "product_code": "CRG-42",
+   "product_name": "Chainring 42T",
+   "on_hand": 20.0,
+   "min_qty": 10.0,
+   "max_qty": 40.0
+  },
+  {
+   "product_id": 21,
+   "product_code": "CRG-38",
+   "product_name": "Chainring 38T",
+   "on_hand": 15.0,
+   "min_qty": 10.0,
+   "max_qty": 40.0
+  },
+  {
+   "product_id": 22,
+   "product_code": "BRK-MNT",
+   "product_name": "Motor mount bracket",
+   "on_hand": 28.0,
+   "min_qty": 15.0,
+   "max_qty": 60.0
+  },
+  {
+   "product_id": 23,
+   "product_code": "BOLT-KIT",
+   "product_name": "Fastener kit",
+   "on_hand": 98.0,
+   "min_qty": 30.0,
+   "max_qty": 150.0
+  },
+  {
+   "product_id": 24,
+   "product_code": "SPK-36",
+   "product_name": "Spoke set 36h",
+   "on_hand": 20.0,
+   "min_qty": 10.0,
+   "max_qty": 40.0
+  },
+  {
+   "product_id": 25,
+   "product_code": "PKG-BOX",
+   "product_name": "Kit retail box",
+   "on_hand": 78.0,
+   "min_qty": 30.0,
+   "max_qty": 150.0
+  }
+ ],
+ "products": [
+  {
+   "id": 23,
+   "code": "BOLT-KIT",
+   "name": "Fastener kit",
+   "cost": 18.0,
+   "on_hand": 98.0,
+   "free_qty": 94.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 13,
+     "supplier": "Ningbo Precision Metal",
+     "price": 18.0,
+     "min_qty": 1.0,
+     "lead_days": 7
+    }
+   ]
+  },
+  {
+   "id": 22,
+   "code": "BRK-MNT",
+   "name": "Motor mount bracket",
+   "cost": 70.0,
+   "on_hand": 28.0,
+   "free_qty": 28.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 13,
+     "supplier": "Ningbo Precision Metal",
+     "price": 70.0,
+     "min_qty": 1.0,
+     "lead_days": 14
+    }
+   ]
+  },
+  {
+   "id": 12,
+   "code": "BTN-PAD",
+   "name": "Handlebar button pad",
+   "cost": 45.0,
+   "on_hand": 34.0,
+   "free_qty": 34.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 14,
+     "supplier": "VisionPanel Displays",
+     "price": 45.0,
+     "min_qty": 1.0,
+     "lead_days": 10
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "code": "CAS-CTL",
+   "name": "Controller aluminium casing",
+   "cost": 75.0,
+   "on_hand": 45.0,
+   "free_qty": 35.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 13,
+     "supplier": "Ningbo Precision Metal",
+     "price": 75.0,
+     "min_qty": 1.0,
+     "lead_days": 10
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "code": "CAS-DSP",
+   "name": "Display housing",
+   "cost": 32.0,
+   "on_hand": 29.0,
+   "free_qty": 29.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 14,
+     "supplier": "VisionPanel Displays",
+     "price": 32.0,
+     "min_qty": 1.0,
+     "lead_days": 10
+    }
+   ]
+  },
+  {
+   "id": 18,
+   "code": "CBL-BRK",
+   "name": "Brake cut-off sensor pair",
+   "cost": 55.0,
+   "on_hand": 58.0,
+   "free_qty": 51.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 12,
+     "supplier": "Dongguan Cable & Harness",
+     "price": 55.0,
+     "min_qty": 1.0,
+     "lead_days": 10
+    }
+   ]
+  },
+  {
+   "id": 17,
+   "code": "CBL-EXT",
+   "name": "Motor extension cable",
+   "cost": 42.0,
+   "on_hand": 35.0,
+   "free_qty": 32.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 12,
+     "supplier": "Dongguan Cable & Harness",
+     "price": 42.0,
+     "min_qty": 1.0,
+     "lead_days": 10
+    }
+   ]
+  },
+  {
+   "id": 16,
+   "code": "CBL-MAIN",
+   "name": "Main wiring harness",
+   "cost": 95.0,
+   "on_hand": 30.0,
+   "free_qty": 30.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 12,
+     "supplier": "Dongguan Cable & Harness",
+     "price": 95.0,
+     "min_qty": 1.0,
+     "lead_days": 14
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "code": "CHP-MCU",
+   "name": "MCU chip STM32G4",
+   "cost": 62.0,
+   "on_hand": 3.0,
+   "free_qty": 0.0,
+   "incoming_qty": 60.0,
+   "suppliers": [
+    {
+     "supplier_id": 11,
+     "supplier": "Taipei Circuit Co.",
+     "price": 62.0,
+     "min_qty": 1.0,
+     "lead_days": 35
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "code": "CHP-MOS",
+   "name": "MOSFET power stage pack",
+   "cost": 88.0,
+   "on_hand": 12.0,
+   "free_qty": 2.0,
+   "incoming_qty": 40.0,
+   "suppliers": [
+    {
+     "supplier_id": 11,
+     "supplier": "Taipei Circuit Co.",
+     "price": 88.0,
+     "min_qty": 1.0,
+     "lead_days": 14
+    }
+   ]
+  },
+  {
+   "id": 19,
+   "code": "CON-HIG",
+   "name": "HIGO waterproof connector set",
+   "cost": 36.0,
+   "on_hand": 10.0,
+   "free_qty": 0.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 12,
+     "supplier": "Dongguan Cable & Harness",
+     "price": 36.0,
+     "min_qty": 1.0,
+     "lead_days": 21
+    }
+   ]
+  },
+  {
+   "id": 21,
+   "code": "CRG-38",
+   "name": "Chainring 38T",
+   "cost": 85.0,
+   "on_hand": 15.0,
+   "free_qty": 11.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 13,
+     "supplier": "Ningbo Precision Metal",
+     "price": 85.0,
+     "min_qty": 1.0,
+     "lead_days": 14
+    }
+   ]
+  },
+  {
+   "id": 20,
+   "code": "CRG-42",
+   "name": "Chainring 42T",
+   "cost": 85.0,
+   "on_hand": 20.0,
+   "free_qty": 20.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 13,
+     "supplier": "Ningbo Precision Metal",
+     "price": 85.0,
+     "min_qty": 1.0,
+     "lead_days": 14
+    }
+   ]
+  },
+  {
+   "id": 32,
+   "code": "KIT-HP",
+   "name": "VoltRide High-Power Kit 750W",
+   "cost": 0.0,
+   "on_hand": 1.0,
+   "free_qty": 0.0,
+   "incoming_qty": 4.0,
+   "suppliers": []
+  },
+  {
+   "id": 33,
+   "code": "KIT-HUB",
+   "name": "VoltRide Hub Motor Kit 350W",
+   "cost": 0.0,
+   "on_hand": 6.0,
+   "free_qty": 0.0,
+   "incoming_qty": 3.0,
+   "suppliers": []
+  },
+  {
+   "id": 31,
+   "code": "KIT-MID",
+   "name": "VoltRide Mid-Drive Kit 250W",
+   "cost": 0.0,
+   "on_hand": 6.0,
+   "free_qty": 0.0,
+   "incoming_qty": 0.0,
+   "suppliers": []
+  },
+  {
+   "id": 9,
+   "code": "LCD-35",
+   "name": "3.5in colour LCD panel",
+   "cost": 160.0,
+   "on_hand": 0.0,
+   "free_qty": 0.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 14,
+     "supplier": "VisionPanel Displays",
+     "price": 160.0,
+     "min_qty": 1.0,
+     "lead_days": 21
+    }
+   ]
+  },
+  {
+   "id": 1,
+   "code": "MTR-250",
+   "name": "Mid-drive motor 250W",
+   "cost": 1450.0,
+   "on_hand": 14.0,
+   "free_qty": 14.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 10,
+     "supplier": "Shenzhen MotorWorks Ltd",
+     "price": 1450.0,
+     "min_qty": 1.0,
+     "lead_days": 21
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "code": "MTR-750",
+   "name": "High-power motor 750W",
+   "cost": 2380.0,
+   "on_hand": 3.0,
+   "free_qty": 3.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 10,
+     "supplier": "Shenzhen MotorWorks Ltd",
+     "price": 2380.0,
+     "min_qty": 1.0,
+     "lead_days": 28
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "code": "MTR-HUB",
+   "name": "Rear hub motor 350W",
+   "cost": 980.0,
+   "on_hand": 18.0,
+   "free_qty": 15.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 10,
+     "supplier": "Shenzhen MotorWorks Ltd",
+     "price": 980.0,
+     "min_qty": 1.0,
+     "lead_days": 21
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "code": "PCB-CTL",
+   "name": "Controller PCB (bare)",
+   "cost": 145.0,
+   "on_hand": 40.0,
+   "free_qty": 30.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 11,
+     "supplier": "Taipei Circuit Co.",
+     "price": 145.0,
+     "min_qty": 1.0,
+     "lead_days": 14
+    }
+   ]
+  },
+  {
+   "id": 10,
+   "code": "PCB-DSP",
+   "name": "Display PCB",
+   "cost": 58.0,
+   "on_hand": 24.0,
+   "free_qty": 24.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 11,
+     "supplier": "Taipei Circuit Co.",
+     "price": 58.0,
+     "min_qty": 1.0,
+     "lead_days": 14
+    }
+   ]
+  },
+  {
+   "id": 25,
+   "code": "PKG-BOX",
+   "name": "Kit retail box",
+   "cost": 22.0,
+   "on_hand": 78.0,
+   "free_qty": 71.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 13,
+     "supplier": "Ningbo Precision Metal",
+     "price": 22.0,
+     "min_qty": 1.0,
+     "lead_days": 7
+    }
+   ]
+  },
+  {
+   "id": 27,
+   "code": "SA-CTL-HP",
+   "name": "Controller 48V (high-power)",
+   "cost": 0.0,
+   "on_hand": 2.0,
+   "free_qty": 2.0,
+   "incoming_qty": 0.0,
+   "suppliers": []
+  },
+  {
+   "id": 26,
+   "code": "SA-CTL-STD",
+   "name": "Controller 36V (standard)",
+   "cost": 0.0,
+   "on_hand": 6.0,
+   "free_qty": 3.0,
+   "incoming_qty": 10.0,
+   "suppliers": []
+  },
+  {
+   "id": 30,
+   "code": "SA-DRV-HP",
+   "name": "High-power drive unit 750W",
+   "cost": 0.0,
+   "on_hand": 1.0,
+   "free_qty": 0.0,
+   "incoming_qty": 0.0,
+   "suppliers": []
+  },
+  {
+   "id": 29,
+   "code": "SA-DRV-MID",
+   "name": "Mid-drive unit 250W",
+   "cost": 0.0,
+   "on_hand": 1.0,
+   "free_qty": 1.0,
+   "incoming_qty": 0.0,
+   "suppliers": []
+  },
+  {
+   "id": 28,
+   "code": "SA-DSP",
+   "name": "Display unit",
+   "cost": 0.0,
+   "on_hand": 12.0,
+   "free_qty": 5.0,
+   "incoming_qty": 0.0,
+   "suppliers": []
+  },
+  {
+   "id": 14,
+   "code": "SNS-CAD",
+   "name": "Cadence sensor",
+   "cost": 68.0,
+   "on_hand": 25.0,
+   "free_qty": 22.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 11,
+     "supplier": "Taipei Circuit Co.",
+     "price": 68.0,
+     "min_qty": 1.0,
+     "lead_days": 14
+    }
+   ]
+  },
+  {
+   "id": 15,
+   "code": "SNS-SPD",
+   "name": "Speed sensor & spoke magnet",
+   "cost": 38.0,
+   "on_hand": 48.0,
+   "free_qty": 44.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 11,
+     "supplier": "Taipei Circuit Co.",
+     "price": 38.0,
+     "min_qty": 1.0,
+     "lead_days": 14
+    }
+   ]
+  },
+  {
+   "id": 13,
+   "code": "SNS-TRQ",
+   "name": "Torque sensor",
+   "cost": 390.0,
+   "on_hand": 5.0,
+   "free_qty": 5.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 11,
+     "supplier": "Taipei Circuit Co.",
+     "price": 390.0,
+     "min_qty": 1.0,
+     "lead_days": 28
+    }
+   ]
+  },
+  {
+   "id": 24,
+   "code": "SPK-36",
+   "name": "Spoke set 36h",
+   "cost": 65.0,
+   "on_hand": 20.0,
+   "free_qty": 17.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 13,
+     "supplier": "Ningbo Precision Metal",
+     "price": 65.0,
+     "min_qty": 1.0,
+     "lead_days": 10
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "code": "THM-PAD",
+   "name": "Thermal interface pad",
+   "cost": 6.5,
+   "on_hand": 120.0,
+   "free_qty": 110.0,
+   "incoming_qty": 0.0,
+   "suppliers": [
+    {
+     "supplier_id": 11,
+     "supplier": "Taipei Circuit Co.",
+     "price": 6.5,
+     "min_qty": 1.0,
+     "lead_days": 7
+    }
+   ]
+  }
+ ],
+ "boms": [
+  {
+   "id": 1,
+   "product_id": 26,
+   "quantity": 1.0,
+   "type": "normal",
+   "sequence": 0,
+   "lines": [
+    {
+     "product_id": 4,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 5,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 6,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 7,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 8,
+     "quantity": 1.0
+    }
+   ],
+   "operations": [
+    {
+     "name": "Solder & flash firmware",
+     "workcenter_id": 1,
+     "minutes": 12.0
+    },
+    {
+     "name": "Controller burn-in",
+     "workcenter_id": 3,
+     "minutes": 20.0
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "product_id": 27,
+   "quantity": 1.0,
+   "type": "normal",
+   "sequence": 0,
+   "lines": [
+    {
+     "product_id": 4,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 5,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 6,
+     "quantity": 2.0
+    },
+    {
+     "product_id": 7,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 8,
+     "quantity": 2.0
+    }
+   ],
+   "operations": [
+    {
+     "name": "Solder & flash firmware",
+     "workcenter_id": 1,
+     "minutes": 15.0
+    },
+    {
+     "name": "Controller burn-in",
+     "workcenter_id": 3,
+     "minutes": 30.0
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "product_id": 28,
+   "quantity": 1.0,
+   "type": "normal",
+   "sequence": 0,
+   "lines": [
+    {
+     "product_id": 9,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 10,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 11,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 12,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 5,
+     "quantity": 1.0
+    }
+   ],
+   "operations": [
+    {
+     "name": "Mount LCD & flash",
+     "workcenter_id": 1,
+     "minutes": 10.0
+    },
+    {
+     "name": "Display check",
+     "workcenter_id": 3,
+     "minutes": 5.0
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "product_id": 29,
+   "quantity": 1.0,
+   "type": "normal",
+   "sequence": 0,
+   "lines": [
+    {
+     "product_id": 1,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 26,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 13,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 22,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 16,
+     "quantity": 1.0
+    }
+   ],
+   "operations": [
+    {
+     "name": "Mount motor & controller",
+     "workcenter_id": 2,
+     "minutes": 25.0
+    },
+    {
+     "name": "Dyno test",
+     "workcenter_id": 3,
+     "minutes": 15.0
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "product_id": 30,
+   "quantity": 1.0,
+   "type": "normal",
+   "sequence": 0,
+   "lines": [
+    {
+     "product_id": 2,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 27,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 13,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 22,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 16,
+     "quantity": 1.0
+    }
+   ],
+   "operations": [
+    {
+     "name": "Mount motor & controller",
+     "workcenter_id": 2,
+     "minutes": 35.0
+    },
+    {
+     "name": "Dyno test",
+     "workcenter_id": 3,
+     "minutes": 20.0
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "product_id": 31,
+   "quantity": 1.0,
+   "type": "normal",
+   "sequence": 0,
+   "lines": [
+    {
+     "product_id": 29,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 28,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 20,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 15,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 18,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 23,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 25,
+     "quantity": 1.0
+    }
+   ],
+   "operations": [
+    {
+     "name": "Kit & pack",
+     "workcenter_id": 2,
+     "minutes": 10.0
+    },
+    {
+     "name": "Final inspection",
+     "workcenter_id": 3,
+     "minutes": 8.0
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "product_id": 32,
+   "quantity": 1.0,
+   "type": "normal",
+   "sequence": 0,
+   "lines": [
+    {
+     "product_id": 30,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 28,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 21,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 15,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 18,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 19,
+     "quantity": 2.0
+    },
+    {
+     "product_id": 23,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 25,
+     "quantity": 1.0
+    }
+   ],
+   "operations": [
+    {
+     "name": "Kit & pack",
+     "workcenter_id": 2,
+     "minutes": 12.0
+    },
+    {
+     "name": "Final inspection",
+     "workcenter_id": 3,
+     "minutes": 10.0
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "product_id": 33,
+   "quantity": 1.0,
+   "type": "normal",
+   "sequence": 0,
+   "lines": [
+    {
+     "product_id": 3,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 26,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 28,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 14,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 24,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 17,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 18,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 19,
+     "quantity": 1.0
+    },
+    {
+     "product_id": 25,
+     "quantity": 1.0
+    }
+   ],
+   "operations": [
+    {
+     "name": "Kit & pack",
+     "workcenter_id": 2,
+     "minutes": 10.0
+    },
+    {
+     "name": "Final inspection",
+     "workcenter_id": 3,
+     "minutes": 8.0
+    }
+   ]
+  }
+ ],
+ "work_centers": [
+  {
+   "id": 1,
+   "code": "PCB",
+   "name": "PCB Line",
+   "hours_per_day": 8.0,
+   "efficiency": 1.0,
+   "cost_per_hour": 420.0
+  },
+  {
+   "id": 2,
+   "code": "ASM",
+   "name": "Assembly",
+   "hours_per_day": 8.0,
+   "efficiency": 1.0,
+   "cost_per_hour": 360.0
+  },
+  {
+   "id": 3,
+   "code": "TST",
+   "name": "Testing",
+   "hours_per_day": 8.0,
+   "efficiency": 1.0,
+   "cost_per_hour": 300.0
+  }
+ ]
+}

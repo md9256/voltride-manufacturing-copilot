@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from app.odoo import OdooClient, OdooError
 from app.schemas.erp import ManufacturingOrder, SaleOrder, StockLevel
+from tests.factories import mini_voltride
 
 
 def utc(*args: int) -> datetime:
@@ -63,6 +64,10 @@ class FakeOdooClient(OdooClient):
         ]
         self.mos = [mo(1, "done"), mo(2, "progress"), mo(3, "confirmed"), mo(4, "confirmed")]
         self.levels = [stock("CHP-MCU", 3, 40), stock("PCB-CTL", 40, 20), stock("LCD-35", 0, 15)]
+        mini = mini_voltride()
+        self.products = list(mini.products.values())
+        self.boms = list(mini.boms.values())
+        self.work_centers = list(mini.work_centers.values())
 
     def _check(self) -> None:
         if self.fail:
@@ -86,3 +91,15 @@ class FakeOdooClient(OdooClient):
     def list_stock_levels(self):
         self._check()
         return self.levels
+
+    def list_products(self):
+        self._check()
+        return self.products
+
+    def list_boms(self):
+        self._check()
+        return self.boms
+
+    def list_work_centers(self):
+        self._check()
+        return self.work_centers

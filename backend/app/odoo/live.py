@@ -4,12 +4,23 @@ Field names here were verified against the live Odoo 20 instance with
 fields_get (see scripts/check_odoo.py), not assumed from older versions.
 """
 
+from collections import defaultdict
 from datetime import UTC, datetime
 from typing import Any
 
 from app.odoo.base import OdooClient
 from app.odoo.rpc import OdooRpc
-from app.schemas.erp import ManufacturingOrder, SaleOrder, StockLevel
+from app.schemas.erp import (
+    Bom,
+    BomLine,
+    BomOperation,
+    ManufacturingOrder,
+    Product,
+    SaleOrder,
+    StockLevel,
+    SupplierPrice,
+    WorkCenter,
+)
 
 ODOO_DT = "%Y-%m-%d %H:%M:%S"
 
@@ -92,6 +103,121 @@ class LiveOdooClient(OdooClient):
             )
             for r in rows
         ]
+
+    def list_products(self) -> list[Product]:
+        rows = self._rpc.search_read(
+            "product.product",
+            [["type", "=", "consu"]],
+            ["default_code", "name", "standard_price", "qty_available", "free_qty", "incoming_qty", "product_tmpl_id"],
+        )
+        suppliers = self._supplier_prices({r["product_tmpl_id"][0] for r in rows})
+        return [
+            Product(
+                id=r["id"],
+                code=r["default_code"] or None,
+                name=r["name"],
+                cost=r["standard_price"],
+                on_hand=r["qty_available"],
+                free_qty=r["free_qty"],
+                incoming_qty=r["incoming_qty"],
+                # Vendor lines may target the whole template or one variant.
+                suppliers=[
+                    s for variant_id, s in suppliers.get(r["product_tmpl_id"][0], []) if variant_id in (None, r["id"])
+                ],
+            )
+            for r in rows
+        ]
+
+    def _supplier_prices(self, template_ids: set[int]) -> dict[int, list[tuple[int | None, SupplierPrice]]]:
+        """template id -> [(variant id or None for all variants, price line)]."""
+        rows = self._rpc.search_read(
+            "product.supplierinfo",
+            [["product_tmpl_id", "in", sorted(template_ids)]],
+            ["partner_id", "product_tmpl_id", "product_id", "price", "min_qty", "delay"],
+            order="sequence, min_qty, price",
+        )
+        out: dict[int, list[tuple[int | None, SupplierPrice]]] = defaultdict(list)
+        for r in rows:
+            price = SupplierPrice(
+                supplier_id=r["partner_id"][0],
+                supplier=r["partner_id"][1],
+                price=r["price"],
+                min_qty=r["min_qty"],
+                lead_days=r["delay"],
+            )
+            out[r["product_tmpl_id"][0]].append((r["product_id"][0] if r["product_id"] else None, price))
+        return out
+
+    def list_boms(self) -> list[Bom]:
+        boms = self._rpc.search_read(
+            "mrp.bom",
+            [],
+            ["product_tmpl_id", "product_id", "product_qty", "type", "sequence", "bom_line_ids", "operation_ids"],
+            order="sequence, id",
+        )
+        line_ids = [i for b in boms for i in b["bom_line_ids"]]
+        op_ids = [i for b in boms for i in b["operation_ids"]]
+        lines = {
+            r["id"]: BomLine(product_id=r["product_id"][0], quantity=r["product_qty"])
+            for r in self._read("mrp.bom.line", line_ids, ["product_id", "product_qty"])
+        }
+        ops = {
+            r["id"]: BomOperation(name=r["name"], workcenter_id=r["workcenter_id"][0], minutes=r["time_cycle_manual"])
+            for r in self._read("mrp.routing.workcenter", op_ids, ["name", "workcenter_id", "time_cycle_manual"])
+        }
+        variants = self._variants_by_template({b["product_tmpl_id"][0] for b in boms if not b["product_id"]})
+
+        result = []
+        for b in boms:
+            # A BOM either targets one variant or the whole template (all its variants).
+            targets = [b["product_id"][0]] if b["product_id"] else variants.get(b["product_tmpl_id"][0], [])
+            for product_id in targets:
+                result.append(
+                    Bom(
+                        id=b["id"],
+                        product_id=product_id,
+                        quantity=b["product_qty"],
+                        type=b["type"],
+                        sequence=b["sequence"],
+                        lines=[lines[i] for i in b["bom_line_ids"]],
+                        operations=[ops[i] for i in b["operation_ids"]],
+                    )
+                )
+        return result
+
+    def list_work_centers(self) -> list[WorkCenter]:
+        rows = self._rpc.search_read(
+            "mrp.workcenter", [], ["code", "name", "time_efficiency", "costs_hour", "resource_calendar_id"]
+        )
+        calendar_ids = sorted({r["resource_calendar_id"][0] for r in rows if r["resource_calendar_id"]})
+        hours = {r["id"]: r["hours_per_day"] for r in self._read("resource.calendar", calendar_ids, ["hours_per_day"])}
+        return [
+            WorkCenter(
+                id=r["id"],
+                code=r["code"] or None,
+                name=r["name"],
+                # No calendar means Odoo treats the work center as always available;
+                # 8 h/day is a conservative planning default.
+                hours_per_day=hours.get(r["resource_calendar_id"][0], 8.0) if r["resource_calendar_id"] else 8.0,
+                efficiency=r["time_efficiency"] / 100,
+                cost_per_hour=r["costs_hour"],
+            )
+            for r in rows
+        ]
+
+    def _read(self, model: str, ids: list[int], fields: list[str]) -> list[dict]:
+        return self._rpc.call(model, "read", ids=ids, fields=fields) if ids else []
+
+    def _variants_by_template(self, template_ids: set[int]) -> dict[int, list[int]]:
+        if not template_ids:
+            return {}
+        rows = self._rpc.search_read(
+            "product.product", [["product_tmpl_id", "in", sorted(template_ids)]], ["product_tmpl_id"]
+        )
+        out: dict[int, list[int]] = defaultdict(list)
+        for r in rows:
+            out[r["product_tmpl_id"][0]].append(r["id"])
+        return out
 
     def _product_codes(self, ids: set[int]) -> dict[int, tuple[str | None, str]]:
         """product id -> (internal reference, plain name).

@@ -1,12 +1,14 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.api import dashboard, health
+from app.api import dashboard, health, planning
 from app.odoo import OdooAuthError, OdooError
+from app.services.bom import BomCycleError, BomError, UnknownProductError
 
-app = FastAPI(title="VoltRide Manufacturing Copilot", version="0.1.0")
+app = FastAPI(title="VoltRide Manufacturing Copilot", version="0.2.0")
 app.include_router(health.router)
 app.include_router(dashboard.router)
+app.include_router(planning.router)
 
 
 @app.exception_handler(OdooError)
@@ -16,3 +18,13 @@ def odoo_error_handler(request: Request, exc: OdooError) -> JSONResponse:
     # misconfiguration, so the client still gets 502, not 401.
     kind = "odoo_auth" if isinstance(exc, OdooAuthError) else "odoo_error"
     return JSONResponse(status_code=502, content={"error": kind, "detail": str(exc)})
+
+
+@app.exception_handler(BomError)
+def bom_error_handler(request: Request, exc: BomError) -> JSONResponse:
+    # Unknown product: 404. Bad BOM data (e.g. a cycle) or a purchased product
+    # asked for its tree: 422, with the reason (cycle path included).
+    if isinstance(exc, UnknownProductError):
+        return JSONResponse(status_code=404, content={"error": "unknown_product", "detail": str(exc)})
+    kind = "bom_cycle" if isinstance(exc, BomCycleError) else "bom_error"
+    return JSONResponse(status_code=422, content={"error": kind, "detail": str(exc)})

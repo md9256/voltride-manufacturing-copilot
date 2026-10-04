@@ -10,7 +10,7 @@ domain language, and would leak Odoo field names into business logic.
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-from app.schemas.erp import ManufacturingOrder, SaleOrder, StockLevel
+from app.schemas.erp import Bom, ManufacturingOrder, Product, SaleOrder, StockLevel, WorkCenter
 
 
 class OdooClient(ABC):
@@ -35,3 +35,15 @@ class OdooClient(ABC):
     @abstractmethod
     def list_stock_levels(self) -> list[StockLevel]:
         """On-hand vs. reorder minimum for every product that has a reorder rule."""
+
+    @abstractmethod
+    def list_products(self) -> list[Product]:
+        """Every stockable product with stock figures, cost and vendor prices."""
+
+    @abstractmethod
+    def list_boms(self) -> list[Bom]:
+        """Every active bill of materials, one per product variant it applies to."""
+
+    @abstractmethod
+    def list_work_centers(self) -> list[WorkCenter]:
+        """Every work center with its daily working hours."""
