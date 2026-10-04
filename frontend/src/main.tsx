@@ -16,6 +16,7 @@ const router = createBrowserRouter([
       { index: true, lazy: async () => ({ Component: (await import('./pages/DashboardPage')).DashboardPage }) },
       { path: 'bom', lazy: async () => ({ Component: (await import('./pages/BomExplorerPage')).BomExplorerPage }) },
       { path: 'planner', lazy: async () => ({ Component: (await import('./pages/PlannerPage')).PlannerPage }) },
+      { path: 'shopfloor', lazy: async () => ({ Component: (await import('./pages/ShopfloorPage')).ShopfloorPage }) },
       { path: 'intake', lazy: async () => ({ Component: (await import('./pages/IntakePage')).IntakePage }) },
       { path: 'audit', lazy: async () => ({ Component: (await import('./pages/AuditPage')).AuditPage }) },
       { path: '*', lazy: async () => ({ Component: (await import('./pages/NotFoundPage')).NotFoundPage }) },

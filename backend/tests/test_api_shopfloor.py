@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
@@ -44,8 +45,10 @@ def test_timeline_endpoint(env):
     assert statuses == ["done", "planned"]
     assert [u["operation"] for u in body["unscheduled"]] == ["Pack"]
     assert client.get("/api/shopfloor/timeline?days_ahead=0").status_code == 422
-    narrow = client.get("/api/shopfloor/timeline?days_back=1&days_ahead=1").json()
+    narrow = client.get("/api/shopfloor/timeline?days_back=0&days_ahead=1").json()
     assert [b["status"] for r in narrow["rows"] for b in r["bars"]] == ["planned"]  # done one was 2 days ago
+    start = datetime.fromisoformat(narrow["start"]).astimezone(ZoneInfo("Asia/Hong_Kong"))
+    assert (start.hour, start.minute) == (0, 0)  # local midnight
 
 
 def test_stats_endpoint(env):

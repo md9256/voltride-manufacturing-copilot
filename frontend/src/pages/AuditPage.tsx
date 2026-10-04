@@ -7,7 +7,7 @@ interface AuditEntry {
   id: number
   created_at: string
   conversation_id: string | null
-  kind: 'tool_call' | 'action' | 'extraction'
+  kind: 'tool_call' | 'action' | 'extraction' | 'summary'
   name: string
   question: string | null
   params: Record<string, unknown> | null
@@ -24,6 +24,7 @@ const KINDS = [
   ['tool_call', 'Tool calls'],
   ['action', 'Proposals & decisions'],
   ['extraction', 'Document extractions'],
+  ['summary', 'Daily summaries'],
 ] as const
 
 export function AuditPage() {

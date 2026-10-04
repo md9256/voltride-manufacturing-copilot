@@ -10,6 +10,7 @@ const NAV = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/bom', label: 'BOM explorer', end: false },
   { to: '/planner', label: 'Planner', end: false },
+  { to: '/shopfloor', label: 'Shop floor', end: false },
   { to: '/intake', label: 'Quote intake', end: false },
   { to: '/audit', label: 'Audit log', end: false },
 ]

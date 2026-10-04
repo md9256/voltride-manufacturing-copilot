@@ -4,7 +4,7 @@ A web app on top of Odoo for a fictional e-bike drive-system manufacturer:
 production dashboard, BOM explorer and planner, and an AI assistant that works
 through typed, validated tools. See [SPEC.md](SPEC.md) for the full plan.
 
-> Work in progress. Phases 1-4 (dashboard, BOM explorer, planner, demo mode, AI assistant, confirmed write actions, quote intake, audit log) are done; the full README with the
+> Work in progress. Phases 1-5 (dashboard, BOM explorer, planner, demo mode, AI assistant, confirmed write actions, quote intake, audit log, shop-floor view and AI daily briefing) are done; the full README with the
 > architecture diagram, deployment and AI safety design lands in Phase 6.
 
 ## Layout
@@ -38,6 +38,14 @@ checked in plain code (arithmetic, supplier and product matching, prices,
 currency, duplicates) before they can become a proposal. Every tool call,
 proposal, decision and extraction is written to an append-only audit log.
 Sample quotes: `backend/samples/quotes/` (`python -m scripts.make_sample_quotes`).
+
+### Shop floor and daily briefing
+
+The shop-floor page shows work orders per work center on a timeline (Odoo's own
+schedule for open work, recorded times for finished work), planned-versus-actual
+variance, and the planned load for the coming week. The AI daily briefing is
+written from facts the server computes; the model only narrates them, and every
+number in its text is checked against those facts before it is shown.
 
 ## Local development
 

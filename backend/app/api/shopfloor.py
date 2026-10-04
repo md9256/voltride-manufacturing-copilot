@@ -37,14 +37,17 @@ def timeline(
     days_back: Annotated[int, Query(ge=0, le=90)] = 21,
     days_ahead: Annotated[int, Query(ge=1, le=30)] = 7,
 ) -> Timeline:
-    """Work orders in a window around now."""
+    """Work orders in a window around now, aligned to local midnights so the
+    chart's day columns are whole days in the company's time zone."""
     now = _now()
+    timezone = get_settings().company_timezone
+    today = datetime.combine(now.astimezone(ZoneInfo(timezone)).date(), datetime.min.time(), ZoneInfo(timezone))
     return rules.timeline(
         odoo.list_work_orders(),
-        start=now - timedelta(days=days_back),
-        end=now + timedelta(days=days_ahead),
+        start=(today - timedelta(days=days_back)).astimezone(UTC),
+        end=(today + timedelta(days=days_ahead + 1)).astimezone(UTC),
         now=now,
-        timezone=get_settings().company_timezone,
+        timezone=timezone,
     )
 
 
