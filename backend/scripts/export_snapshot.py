@@ -31,6 +31,7 @@ def export(client: LiveOdooClient) -> Snapshot:
         products=client.list_products(),
         boms=client.list_boms(),
         work_centers=client.list_work_centers(),
+        work_orders=client.list_work_orders(),
     )
 
 
@@ -54,7 +55,8 @@ def main() -> int:
     args.out.write_text(snapshot.model_dump_json(indent=1) + "\n", encoding="utf-8")
     print(
         f"Wrote {args.out}: {len(snapshot.products)} products, {len(snapshot.boms)} BOMs, "
-        f"{len(snapshot.sale_orders)} sale orders, {len(snapshot.manufacturing_orders)} MOs"
+        f"{len(snapshot.sale_orders)} sale orders, {len(snapshot.manufacturing_orders)} MOs, "
+        f"{len(snapshot.work_orders)} work orders"
     )
     return 0
 

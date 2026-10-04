@@ -20,6 +20,7 @@ from app.schemas.erp import (
     StockLevel,
     SupplierSummary,
     WorkCenter,
+    WorkOrder,
 )
 
 
@@ -57,6 +58,10 @@ class OdooClient(ABC):
     @abstractmethod
     def list_work_centers(self) -> list[WorkCenter]:
         """Every work center with its daily working hours."""
+
+    @abstractmethod
+    def list_work_orders(self) -> list[WorkOrder]:
+        """Every work order (not cancelled), with planned and actual minutes."""
 
     @abstractmethod
     def list_suppliers(self) -> list[SupplierSummary]:

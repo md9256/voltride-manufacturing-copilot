@@ -26,6 +26,13 @@ class SaleOrder(BaseModel):
     amount_total: float
 
 
+class MissingComponent(BaseModel):
+    product_code: str | None
+    product_name: str
+    needed: float
+    reserved: float
+
+
 class ManufacturingOrder(BaseModel):
     id: int
     name: str
@@ -36,6 +43,41 @@ class ManufacturingOrder(BaseModel):
     date_start: datetime
     date_finished: datetime | None
     origin: str | None
+    # Odoo's own material readiness for confirmed / in-progress orders: its
+    # components are already reserved, so this is more accurate than re-planning.
+    components_status: Literal["available", "expected", "late", "unavailable"] | None = None
+    components_note: str | None = None  # e.g. "Exp Oct 30"
+    missing_components: list[MissingComponent] = []
+
+
+WorkOrderState = Literal["blocked", "ready", "progress", "done", "cancel"]
+
+
+class WorkOrder(BaseModel):
+    """One operation of a manufacturing order at a work center.
+
+    Odoo uses the same two date fields for the plan and for reality: before a
+    work order starts they hold its *planned* slot, afterwards its *actual*
+    start and finish. `is_actual` says which one these are.
+    """
+
+    id: int
+    operation: str
+    production_id: int
+    production: str  # MO reference, e.g. WH/MO/00004
+    product_code: str | None
+    quantity: float
+    workcenter_id: int
+    workcenter: str
+    state: WorkOrderState
+    date_start: datetime | None  # None: not scheduled yet
+    date_finished: datetime | None
+    planned_minutes: float
+    actual_minutes: float  # time logged; 0 until started
+
+    @property
+    def is_actual(self) -> bool:
+        return self.state in ("progress", "done")
 
 
 class StockLevel(BaseModel):

@@ -78,6 +78,7 @@ class FakeOdooClient(OdooClient):
         self.purchase_orders: list[PurchaseOrderRef] = []  # existing POs (seeded per test)
         self.created: list[tuple[int, list[PurchaseLineDraft], str, str | None]] = []  # every write
         self.fail_writes = False
+        self.work_orders: list = []  # set per test (tests/test_shopfloor.py builds them)
 
     def _check(self) -> None:
         if self.fail:
@@ -146,3 +147,7 @@ class FakeOdooClient(OdooClient):
         )
         self.purchase_orders.append(po)
         return po
+
+    def list_work_orders(self):
+        self._check()
+        return self.work_orders

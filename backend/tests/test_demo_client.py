@@ -19,6 +19,7 @@ def make_snapshot() -> Snapshot:
         products=fake.products,
         boms=fake.boms,
         work_centers=fake.work_centers,
+        work_orders=fake.work_orders,
     )
 
 

@@ -25,6 +25,7 @@ from app.schemas.erp import (
     StockLevel,
     SupplierSummary,
     WorkCenter,
+    WorkOrder,
 )
 
 
@@ -72,6 +73,18 @@ class DemoOdooClient(OdooClient):
                 }
             )
             for o in self._snapshot.manufacturing_orders
+        ]
+
+    def list_work_orders(self) -> list[WorkOrder]:
+        shift = self._shift()
+        return [
+            w.model_copy(
+                update={
+                    "date_start": w.date_start + shift if w.date_start else None,
+                    "date_finished": w.date_finished + shift if w.date_finished else None,
+                }
+            )
+            for w in self._snapshot.work_orders
         ]
 
     def list_stock_levels(self) -> list[StockLevel]:

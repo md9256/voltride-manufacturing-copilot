@@ -97,6 +97,11 @@ class ManufacturingOrder:
     # For done orders: actual minutes per work order as a multiple of expected,
     # so the shop-floor view (Phase 5) has planned-vs-actual variance to show.
     actual_factor: float = 1.0
+    hour_utc: int = 8  # start time of the first work order (UTC; 01:00 UTC = 09:00 in Hong Kong)
+    # Historical orders that must not change today's stock picture: the seeder
+    # tops up exactly what they consume before finishing them, and removes
+    # what they produce afterwards (as if it had shipped or been used since).
+    stock_neutral: bool = False
 
 
 SUPPLIERS = [
@@ -269,4 +274,19 @@ MANUFACTURING_ORDERS = [
     ManufacturingOrder("SEED-MO-004", "SA-CTL-STD", 10, 1, "confirmed"),
     ManufacturingOrder("SEED-MO-005", "KIT-HP", 4, -2, "confirmed"),
     ManufacturingOrder("SEED-MO-006", "KIT-MID", 5, -5, "draft"),
+    # Production history for the shop-floor view (Phase 5): five weeks of
+    # finished orders with realistic overruns, plus one order running today.
+    ManufacturingOrder("SEED-MO-007", "SA-CTL-STD", 8, 34, "done", 1.15, hour_utc=1, stock_neutral=True),
+    ManufacturingOrder("SEED-MO-008", "SA-DSP", 10, 32, "done", 0.95, hour_utc=2, stock_neutral=True),
+    ManufacturingOrder("SEED-MO-009", "KIT-HUB", 4, 29, "done", 1.30, hour_utc=1, stock_neutral=True),
+    ManufacturingOrder("SEED-MO-010", "SA-CTL-HP", 4, 27, "done", 1.40, hour_utc=3, stock_neutral=True),
+    ManufacturingOrder("SEED-MO-011", "SA-DRV-MID", 4, 24, "done", 1.10, hour_utc=1, stock_neutral=True),
+    ManufacturingOrder("SEED-MO-012", "KIT-MID", 3, 21, "done", 1.05, hour_utc=5, stock_neutral=True),
+    ManufacturingOrder("SEED-MO-013", "SA-DSP", 8, 17, "done", 1.20, hour_utc=1, stock_neutral=True),
+    ManufacturingOrder("SEED-MO-014", "SA-DRV-HP", 2, 12, "done", 1.35, hour_utc=2, stock_neutral=True),
+    ManufacturingOrder("SEED-MO-015", "KIT-HP", 2, 10, "done", 1.25, hour_utc=1, stock_neutral=True),
+    ManufacturingOrder("SEED-MO-016", "SA-CTL-STD", 6, 7, "done", 0.90, hour_utc=1, stock_neutral=True),
+    ManufacturingOrder("SEED-MO-017", "KIT-HUB", 2, 4, "done", 1.10, hour_utc=3, stock_neutral=True),
+    ManufacturingOrder("SEED-MO-018", "SA-DSP", 4, 0, "progress", 1.20, hour_utc=1, stock_neutral=True),
+    ManufacturingOrder("SEED-MO-019", "SA-CTL-HP", 2, 2, "done", 1.05, hour_utc=2, stock_neutral=True),
 ]

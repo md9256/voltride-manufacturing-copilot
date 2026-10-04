@@ -15,6 +15,7 @@ from app.schemas.erp import (
     BomLine,
     BomOperation,
     ManufacturingOrder,
+    MissingComponent,
     Product,
     PurchaseLineDraft,
     PurchaseOrderRef,
@@ -23,6 +24,7 @@ from app.schemas.erp import (
     SupplierPrice,
     SupplierSummary,
     WorkCenter,
+    WorkOrder,
 )
 
 ODOO_DT = "%Y-%m-%d %H:%M:%S"
@@ -74,8 +76,21 @@ class LiveOdooClient(OdooClient):
         rows = self._rpc.search_read(
             "mrp.production",
             [],
-            ["name", "product_id", "product_qty", "state", "date_start", "date_finished", "origin"],
+            [
+                "name",
+                "product_id",
+                "product_qty",
+                "state",
+                "date_start",
+                "date_finished",
+                "origin",
+                "components_availability_state",
+                "components_availability",
+            ],
             order="date_start desc",
+        )
+        missing = self._missing_components(
+            [r["id"] for r in rows if r["state"] in ("confirmed", "progress", "to_close")]
         )
         products = self._product_codes({r["product_id"][0] for r in rows})
         return [
@@ -89,9 +104,99 @@ class LiveOdooClient(OdooClient):
                 date_start=_dt(r["date_start"]),
                 date_finished=_dt(r["date_finished"]),
                 origin=r["origin"] or None,
+                components_status=r["components_availability_state"] or None,
+                components_note=r["components_availability"] or None,
+                missing_components=missing.get(r["id"], []),
             )
             for r in rows
         ]
+
+    def _missing_components(self, production_ids: list[int]) -> dict[int, list[MissingComponent]]:
+        """Raw-material moves whose reserved quantity is below what the MO needs."""
+        if not production_ids:
+            return {}
+        moves = self._rpc.search_read(
+            "stock.move",
+            [["raw_material_production_id", "in", production_ids], ["state", "not in", ["done", "cancel"]]],
+            ["raw_material_production_id", "product_id", "product_uom_qty", "quantity"],
+        )
+        short = [m for m in moves if m["quantity"] < m["product_uom_qty"]]
+        products = self._product_codes({m["product_id"][0] for m in short})
+        out: dict[int, list[MissingComponent]] = defaultdict(list)
+        for m in short:
+            code, name = products[m["product_id"][0]]
+            out[m["raw_material_production_id"][0]].append(
+                MissingComponent(
+                    product_code=code, product_name=name, needed=m["product_uom_qty"], reserved=m["quantity"]
+                )
+            )
+        return out
+
+    def list_work_orders(self) -> list[WorkOrder]:
+        rows = self._rpc.search_read(
+            "mrp.workorder",
+            [["state", "!=", "cancel"]],
+            [
+                "name",
+                "production_id",
+                "product_id",
+                "qty_production",
+                "workcenter_id",
+                "state",
+                "date_start",
+                "date_finished",
+                "duration_expected",
+                "duration",
+                "operation_id",
+            ],
+            order="id",
+        )
+        ops = {
+            r["id"]: r["time_cycle_manual"]
+            for r in self._read(
+                "mrp.routing.workcenter",
+                sorted({r["operation_id"][0] for r in rows if r["operation_id"]}),
+                ["time_cycle_manual"],
+            )
+        }
+        centers = {
+            r["id"]: r
+            for r in self._read(
+                "mrp.workcenter",
+                sorted({r["workcenter_id"][0] for r in rows}),
+                ["time_efficiency", "time_start", "time_stop"],
+            )
+        }
+        products = self._product_codes({r["product_id"][0] for r in rows if r["product_id"]})
+        result = []
+        for r in rows:
+            planned = r["duration_expected"]
+            op_minutes = ops.get(r["operation_id"][0]) if r["operation_id"] else None
+            if r["state"] == "done" and op_minutes is not None:
+                # Odoo rewrites duration_expected once a work order is finished,
+                # so the plan is rebuilt with Odoo's own formula: setup + cleanup
+                # + minutes per unit x quantity / work-center efficiency.
+                wc = centers[r["workcenter_id"][0]]
+                efficiency = (wc["time_efficiency"] or 100) / 100
+                planned = wc["time_start"] + wc["time_stop"] + op_minutes * r["qty_production"] / efficiency
+            result.append(
+                WorkOrder(
+                    id=r["id"],
+                    operation=r["name"],
+                    production_id=r["production_id"][0],
+                    production=r["production_id"][1],
+                    product_code=products[r["product_id"][0]][0] if r["product_id"] else None,
+                    quantity=r["qty_production"],
+                    workcenter_id=r["workcenter_id"][0],
+                    workcenter=r["workcenter_id"][1],
+                    state=r["state"],
+                    date_start=_dt(r["date_start"]),
+                    date_finished=_dt(r["date_finished"]),
+                    planned_minutes=round(planned, 2),
+                    actual_minutes=round(r["duration"], 2),
+                )
+            )
+        return result
 
     def list_stock_levels(self) -> list[StockLevel]:
         rows = self._rpc.search_read(

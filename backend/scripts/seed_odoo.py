@@ -286,11 +286,16 @@ class Seeder:
                     "product_qty": mo.qty,
                     "bom_id": self.bom_ids[mo.product],
                     "origin": mo.ref,
-                    "date_start": days_ago(mo.days_ago, hour=8),
+                    "date_start": days_ago(mo.days_ago, hour=mo.hour_utc),
                 },
             )
             target = self.MO_STATE_RANK[mo.state]
             if self._mo_state(mo_id) == "draft" and target >= self.MO_STATE_RANK["confirmed"]:
+                if mo.stock_neutral:
+                    # Add exactly what this order will reserve and consume, so
+                    # today's free stock (and the shortages built on it) is unchanged.
+                    for code, qty in self._direct_components(mo).items():
+                        self._adjust_stock(self.product_ids[code], qty)
                 self.rpc.call("mrp.production", "action_confirm", ids=[mo_id])
             if self.MO_STATE_RANK[self._mo_state(mo_id)] < target:
                 if mo.state == "progress":
@@ -301,15 +306,86 @@ class Seeder:
                 elif mo.state == "done":
                     finished = self._finish_workorders(mo_id, mo)
                     self.rpc.write("mrp.production", [mo_id], {"qty_producing": mo.qty})
+                    self._consume_components(mo_id)
                     result = self.rpc.call("mrp.production", "button_mark_done", ids=[mo_id])
                     if isinstance(result, dict) and result.get("res_model"):
                         print(f"  note: {mo.ref} mark-done opened wizard {result['res_model']}")
-                    self.rpc.write("mrp.production", [mo_id], {"date_finished": finished.strftime(ODOO_DT)})
+                    if self._mo_state(mo_id) == "done":
+                        self.rpc.write("mrp.production", [mo_id], {"date_finished": finished.strftime(ODOO_DT)})
+                        if mo.stock_neutral:
+                            # Only once the output really exists; doing this after a
+                            # mark-done that stopped half-way removed stock twice.
+                            self._adjust_stock(self.product_ids[mo.product], -mo.qty)  # output "used since"
                 self.stats["manufacturing order advanced"] += 1
 
             state = self._mo_state(mo_id)
             if state != mo.state:
                 print(f"  warning: {mo.ref} is in state {state!r}, expected {mo.state!r}")
+
+    def _consume_components(self, mo_id: int) -> None:
+        """Record every component move as consumed at its BOM quantity.
+
+        In the UI, setting "quantity producing" fills these in; over the API
+        it does not, and Odoo then stops mark-done with a "consumption
+        warning" whenever a component was not fully reserved (reservation
+        order between competing orders is not under the seed's control).
+        Only component moves: also marking the output move makes Odoo cancel
+        the order (verified on Odoo 20).
+        """
+        moves = self.rpc.search_read(
+            "stock.move",
+            [["raw_material_production_id", "=", mo_id], ["state", "not in", ["done", "cancel"]]],
+            ["product_uom_qty"],
+        )
+        for move in moves:
+            self.rpc.write("stock.move", [move["id"]], {"quantity": move["product_uom_qty"], "picked": True})
+
+    def _direct_components(self, mo: data.ManufacturingOrder) -> dict[str, float]:
+        lines = next(m.lines for m in data.MANUFACTURED if m.code == mo.product)
+        return {code: qty * mo.qty for code, qty in lines.items()}
+
+    def _adjust_stock(self, product_id: int, delta: float) -> None:
+        """Change on-hand stock by `delta` through an inventory adjustment."""
+        location = self._stock_location()
+        ctx = {"inventory_mode": True}
+        quants = self.rpc.search_read(
+            "stock.quant", [["product_id", "=", product_id], ["location_id", "=", location]], ["quantity"], limit=1
+        )
+        if quants:
+            quant_id = quants[0]["id"]
+            self.rpc.write(
+                "stock.quant", [quant_id], {"inventory_quantity": quants[0]["quantity"] + delta}, context=ctx
+            )
+        else:
+            quant_id = self.rpc.create(
+                "stock.quant",
+                {"product_id": product_id, "location_id": location, "inventory_quantity": delta},
+                context=ctx,
+            )
+        self.rpc.call("stock.quant", "action_apply_inventory", ids=[quant_id], context=ctx)
+        self.stats["stock adjustment"] += 1
+
+    def _stock_location(self) -> int:
+        if not hasattr(self, "_location_id"):
+            wh = self.rpc.search_read("stock.warehouse", [], ["lot_stock_id"], limit=1)
+            self._location_id = wh[0]["lot_stock_id"][0]
+        return self._location_id
+
+    def plan_manufacturing_orders(self) -> None:
+        """Schedule open MOs with Odoo's own planner (the MO "Plan" button).
+
+        It books each work order onto its work center's calendar, which gives
+        the shop-floor timeline real planned slots. Already planned MOs are
+        left alone, so re-running is a no-op.
+        """
+        open_mos = self.rpc.search_read(
+            "mrp.production",
+            [["origin", "like", "SEED-MO-"], ["state", "in", ["confirmed", "progress"]], ["is_planned", "=", False]],
+            ["name"],
+        )
+        for mo in open_mos:
+            self.rpc.call("mrp.production", "button_plan", ids=[mo["id"]])
+            self.stats["manufacturing order planned"] += 1
 
     def _mo_state(self, mo_id: int) -> str:
         return self.rpc.call("mrp.production", "read", ids=[mo_id], fields=["state"])[0]["state"]
@@ -322,7 +398,14 @@ class Seeder:
             ["id", "duration_expected"],
             order="id",
         )
-        start = datetime.strptime(days_ago(mo.days_ago, hour=8), ODOO_DT)
+        start = datetime.strptime(days_ago(mo.days_ago, hour=mo.hour_utc), ODOO_DT)
+        if not workorders:
+            # Resuming an order whose work orders were finished on an earlier run.
+            done = self.rpc.search_read(
+                "mrp.workorder", [["production_id", "=", mo_id], ["state", "=", "done"]], ["date_finished"]
+            )
+            ends = [datetime.strptime(w["date_finished"], ODOO_DT) for w in done if w["date_finished"]]
+            return max(ends, default=start)
         for wo in workorders[:limit]:
             minutes = round(wo["duration_expected"] * mo.actual_factor, 1)
             end = start + timedelta(minutes=minutes)
@@ -355,6 +438,7 @@ class Seeder:
             ("Purchase orders", self.purchase_orders),
             ("Sale orders", self.sale_orders),
             ("Manufacturing orders", self.manufacturing_orders),
+            ("Scheduling", self.plan_manufacturing_orders),
         ]
         for title, step in steps:
             print(f"{title}...")

@@ -11,9 +11,9 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from app.schemas.erp import Bom, ManufacturingOrder, Product, SaleOrder, StockLevel, WorkCenter
+from app.schemas.erp import Bom, ManufacturingOrder, Product, SaleOrder, StockLevel, WorkCenter, WorkOrder
 
-SNAPSHOT_FORMAT = 1
+SNAPSHOT_FORMAT = 2  # 2: work orders, MO component readiness
 DEFAULT_SNAPSHOT_PATH = Path(__file__).parent / "snapshot" / "voltride.json"
 
 
@@ -28,6 +28,7 @@ class Snapshot(BaseModel):
     products: list[Product]
     boms: list[Bom]
     work_centers: list[WorkCenter]
+    work_orders: list[WorkOrder]
 
 
 def load_snapshot(path: Path) -> Snapshot:
