@@ -163,3 +163,24 @@ class AnthropicProvider(LLMProvider):
             return json.loads(text)
         except json.JSONDecodeError as exc:
             raise LLMError("The AI did not return valid JSON for this document.") from exc
+
+    async def complete(self, system: str, prompt: str) -> str:
+        request: dict = {
+            "model": self.model,
+            "max_tokens": MAX_OUTPUT_TOKENS,
+            "system": system,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        if self._effort:
+            request["output_config"] = {"effort": self._effort}
+        try:
+            message = await self._client.messages.create(**request)
+        except anthropic.RateLimitError as exc:
+            raise LLMError("The AI service is rate-limited right now. Please try again shortly.") from exc
+        except anthropic.APIStatusError as exc:
+            raise LLMError(f"The AI service returned an error (HTTP {exc.status_code}).") from exc
+        except anthropic.APIConnectionError as exc:
+            raise LLMError("Could not reach the AI service. Please try again.") from exc
+        if message.stop_reason == "refusal":
+            raise LLMError("The model declined to write this summary.")
+        return "".join(b.text for b in message.content if b.type == "text")

@@ -62,3 +62,7 @@ class LLMProvider(ABC):
     @abstractmethod
     async def extract_pdf(self, pdf: bytes, instruction: str, schema: dict) -> dict:
         """Read a PDF and return JSON matching `schema` (provider structured output)."""
+
+    @abstractmethod
+    async def complete(self, system: str, prompt: str) -> str:
+        """One plain text completion, no tools (e.g. the daily production summary)."""

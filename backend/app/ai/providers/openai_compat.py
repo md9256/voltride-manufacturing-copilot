@@ -104,6 +104,22 @@ class OpenAICompatProvider(LLMProvider):
             stop = "end"
         yield TurnResult(native=[assistant], text=text, tool_calls=tool_calls, stop=stop)
 
+    async def complete(self, system: str, prompt: str) -> str:
+        try:
+            response = await self._client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+                max_tokens=MAX_OUTPUT_TOKENS,
+            )
+        except openai.APIStatusError as exc:
+            raise LLMError(_status_message(exc.status_code, str(exc))) from exc
+        except openai.APIConnectionError as exc:
+            raise LLMError("Could not reach the AI service. Please try again.") from exc
+        text = response.choices[0].message.content if response.choices else None
+        if not text:
+            raise LLMError("The AI returned an empty answer.")
+        return text
+
     async def extract_pdf(self, pdf: bytes, instruction: str, schema: dict) -> dict:
         # Gemini's OpenAI-compatible endpoint accepts a PDF as a data URL in an
         # image_url part (a `file` part is rejected with HTTP 400 - verified).

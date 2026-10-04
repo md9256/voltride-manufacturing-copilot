@@ -78,3 +78,41 @@ def test_stock_levels_read_code_and_name_separately():
         3.0,
         40.0,
     )
+
+
+def test_work_orders_rebuild_planned_minutes_for_finished_ones():
+    def wo(id, state, expected, duration, start, end):
+        return {
+            "id": id,
+            "name": "Solder",
+            "production_id": [4, "WH/MO/00004"],
+            "product_id": [5, "[SA] x"],
+            "qty_production": 10.0,
+            "workcenter_id": [1, "PCB Line"],
+            "state": state,
+            "date_start": start,
+            "date_finished": end,
+            "duration_expected": expected,
+            "duration": duration,
+            "operation_id": [7, "Solder"],
+        }
+
+    client = client_with(
+        {
+            "mrp.workorder/search_read": [
+                # Odoo rewrote the finished order's expected duration to 0.
+                wo(1, "done", 0.0, 130.0, "2026-09-14 08:00:00", "2026-09-14 10:10:00"),
+                wo(2, "ready", 120.0, 0.0, "2026-10-05 00:00:00", "2026-10-05 02:00:00"),
+            ],
+            "mrp.routing.workcenter/read": [{"id": 7, "time_cycle_manual": 12.0}],
+            "mrp.workcenter/read": [{"id": 1, "time_efficiency": 80.0, "time_start": 5.0, "time_stop": 5.0}],
+            "product.product/read": [{"id": 5, "default_code": "SA-CTL", "name": "Controller"}],
+        }
+    )
+
+    done, ready = client.list_work_orders()
+
+    assert done.planned_minutes == 160.0  # 5 + 5 + 12 min x 10 / 80 %
+    assert (done.actual_minutes, done.is_actual) == (130.0, True)
+    assert (ready.planned_minutes, ready.is_actual) == (120.0, False)  # Odoo's own plan, untouched
+    assert ready.date_start == datetime(2026, 10, 5, 0, 0, tzinfo=UTC)

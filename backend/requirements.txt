@@ -12,3 +12,4 @@ anthropic>=1.11
 openai>=3.0
 pypdf>=5.0  # page count / validity check for uploaded quotes
 python-multipart>=0.0.9  # file uploads
+tzdata>=2024.1  # IANA time zones where the OS has none (Windows, slim images)

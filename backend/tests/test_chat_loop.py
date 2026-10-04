@@ -25,6 +25,14 @@ class ScriptedProvider(LLMProvider):
         self.requests: list[dict] = []
         self.extraction = extraction  # what extract_pdf returns
         self.extracted: list[bytes] = []
+        self.completion: str | Exception = "Summary."  # what complete() returns
+        self.completions: list[tuple[str, str]] = []
+
+    async def complete(self, system, prompt):
+        self.completions.append((system, prompt))
+        if isinstance(self.completion, Exception):
+            raise self.completion
+        return self.completion
 
     async def extract_pdf(self, pdf, instruction, schema):
         self.extracted.append(pdf)

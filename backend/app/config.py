@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # Demo mode only; empty means the bundled snapshot (app/odoo/snapshot/voltride.json).
     odoo_snapshot_path: str = ""
 
+    # Day boundaries and shift hours for the shop-floor view and daily summary.
+    company_timezone: str = "Asia/Hong_Kong"
+
     # App database (chat history). Neon's pooled URL in production.
     database_url: str = ""
     # Direct (non-pooled) URL for migrations; falls back to database_url.

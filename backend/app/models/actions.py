@@ -12,7 +12,7 @@ moves it on. Status flow:
 
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, Float, Integer, String, Text
+from sqlalchemy import DateTime, Float, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.db import Base, JsonType
@@ -70,7 +70,7 @@ class AuditEntry(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
     owner_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     conversation_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
-    kind: Mapped[str] = mapped_column(String(32), index=True)  # tool_call | action | extraction
+    kind: Mapped[str] = mapped_column(String(32), index=True)  # tool_call | action | extraction | summary
     name: Mapped[str] = mapped_column(String(64))  # tool name, action event, or document type
     question: Mapped[str | None] = mapped_column(Text, nullable=True)  # the user message behind it
     params: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
@@ -79,3 +79,26 @@ class AuditEntry(Base):
     duration_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
     provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
     model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
+class ProductionSummary(Base):
+    """Cached AI daily summaries.
+
+    Keyed by day, language and a hash of the facts: the same facts never cost
+    a second LLM call (important on a free-tier quota), while any change in
+    the underlying data produces a new summary.
+    """
+
+    __tablename__ = "production_summaries"
+    __table_args__ = (UniqueConstraint("day", "language", "facts_hash"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    day: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD, company time zone
+    language: Mapped[str] = mapped_column(String(8))
+    facts_hash: Mapped[str] = mapped_column(String(64))
+    facts: Mapped[dict] = mapped_column(JsonType)
+    text: Mapped[str] = mapped_column(Text)
+    unverified: Mapped[list] = mapped_column(JsonType)
+    provider: Mapped[str] = mapped_column(String(32))
+    model: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
