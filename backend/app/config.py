@@ -13,6 +13,12 @@ GEMINI_OPENAI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/opena
 # different free-tier quota (gemini-flash-latest started sharing
 # gemini-3.8-flash's 20 requests/day) and change behaviour without a deploy.
 DEFAULT_MODELS = {"gemini": "gemini-3.5-flash", "anthropic": "claude-opus-5-5"}
+# Models a user may pick in the UI (LLM_MODELS overrides). An allowlist: the
+# browser can choose among these, never send an arbitrary model name.
+SELECTABLE_MODELS = {
+    "gemini": ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.5-flash-lite"],
+    "anthropic": ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5"],
+}
 
 
 class Settings(BaseSettings):
@@ -41,6 +47,7 @@ class Settings(BaseSettings):
     # completions protocol); `anthropic` uses the Anthropic SDK.
     llm_provider: Literal["gemini", "anthropic", "openai_compatible"] = "gemini"
     llm_model: str = ""  # empty: DEFAULT_MODELS[llm_provider]
+    llm_models: str = ""  # comma-separated models users may pick; empty: SELECTABLE_MODELS[llm_provider]
     llm_effort: Literal["", "low", "medium", "high", "xhigh", "max"] = ""  # Anthropic only; empty = model default
     llm_base_url: str = ""  # openai_compatible only (e.g. Hugging Face router, Groq)
     llm_api_key: str = ""  # openai_compatible only
@@ -57,6 +64,15 @@ class Settings(BaseSettings):
     @property
     def resolved_llm_model(self) -> str:
         return self.llm_model or DEFAULT_MODELS.get(self.llm_provider, "")
+
+    @property
+    def allowed_llm_models(self) -> list[str]:
+        """Pickable models, default first."""
+        listed = [m.strip() for m in self.llm_models.split(",") if m.strip()] or SELECTABLE_MODELS.get(
+            self.llm_provider, []
+        )
+        default = self.resolved_llm_model
+        return [default, *(m for m in listed if m != default)] if default else listed
 
 
 @lru_cache

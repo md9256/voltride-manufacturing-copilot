@@ -47,7 +47,7 @@ def env(monkeypatch):
     odoo = FakeOdooClient()
     provider = ScriptedProvider([], extraction=extraction())
     monkeypatch.setattr(main, "upgrade_to_head", lambda: None)
-    app.dependency_overrides[deps.get_provider] = lambda: provider
+    app.dependency_overrides[deps.get_provider_factory] = lambda: lambda model: provider
     app.dependency_overrides[deps.get_db_sessionmaker] = database.sessionmaker
     app.dependency_overrides[get_odoo_client] = lambda: odoo
     with TestClient(app) as client:

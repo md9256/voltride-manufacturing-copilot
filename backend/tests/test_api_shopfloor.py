@@ -30,7 +30,7 @@ def env(monkeypatch):
     provider = ScriptedProvider([])
     provider.completion = "All good: 1 work order finished."
     monkeypatch.setattr(main, "upgrade_to_head", lambda: None)
-    app.dependency_overrides[deps.get_provider] = lambda: provider
+    app.dependency_overrides[deps.get_provider_factory] = lambda: lambda model: provider
     app.dependency_overrides[deps.get_db_sessionmaker] = database.sessionmaker
     app.dependency_overrides[get_odoo_client] = lambda: odoo
     with TestClient(app) as client:
@@ -97,3 +97,12 @@ def test_summary_llm_failure_is_502(env):
     provider.completion = LLMError("The AI service's free daily quota is used up; it resets in about 11 h.")
     resp = client.post("/api/shopfloor/summary", json={"language": "en"}, headers=A)
     assert resp.status_code == 502 and "quota" in resp.json()["detail"]
+
+
+def test_summary_cache_is_per_model(env):
+    client, _, provider = env
+    client.post("/api/shopfloor/summary", json={"language": "en"}, headers=A)
+    provider.model = "gemini-3.5-flash-lite"  # the user picked another model
+    second = client.post("/api/shopfloor/summary", json={"language": "en"}, headers=A).json()
+    assert second["cached"] is False and second["model"] == "gemini-3.5-flash-lite"
+    assert len(provider.completions) == 2

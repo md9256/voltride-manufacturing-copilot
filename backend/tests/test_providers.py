@@ -263,3 +263,23 @@ async def test_openai_daily_quota_message_includes_reset_time():
     )
     with pytest.raises(LLMError, match="resets in about 11 h"):
         await collect(gemini(FakeOpenAI(error=error)))
+
+
+def test_allowlist_puts_default_first_and_honours_override():
+    from app.config import Settings
+
+    s = Settings(_env_file=None, llm_provider="gemini", gemini_api_key="k")
+    assert s.allowed_llm_models == ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.5-flash-lite"]
+    s = Settings(_env_file=None, llm_provider="gemini", llm_model="gemini-3.8-flash", llm_models="a, gemini-3.8-flash")
+    assert s.allowed_llm_models == ["gemini-3.8-flash", "a"]
+
+
+def test_make_provider_rejects_models_off_the_list():
+    from app.ai.providers import ModelNotAllowed, make_provider
+    from app.config import Settings
+
+    s = Settings(_env_file=None, llm_provider="gemini", gemini_api_key="k")
+    assert make_provider(s, "gemini-3.5-flash-lite").model == "gemini-3.5-flash-lite"
+    assert make_provider(s).model == "gemini-3.5-flash"
+    with pytest.raises(ModelNotAllowed):
+        make_provider(s, "gemini-99-ultra")

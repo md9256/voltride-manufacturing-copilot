@@ -1,4 +1,5 @@
 import { accessToken, clearAccessToken } from './access'
+import { selectedModel } from './model'
 
 // Minimal typed fetch wrapper. All requests are same-origin `/api/...`
 // (Vite proxy in dev, Vercel rewrite in production).
@@ -62,10 +63,15 @@ export const getJson = <T>(path: string) => request<T>(path)
 export const postJson = <T>(path: string, body: unknown) =>
   request<T>(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
 
-/** Headers for requests scoped to this browser: client id, plus the demo access token if held. */
+/** Headers for requests scoped to this browser: client id, the demo access token if held, and the picked AI model. */
 export function ownedHeaders(): Record<string, string> {
   const token = accessToken()
-  return { 'X-Client-Id': clientId(), ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+  const model = selectedModel()
+  return {
+    'X-Client-Id': clientId(),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(model ? { 'X-LLM-Model': model } : {}),
+  }
 }
 
 /** A request scoped to this browser's client id (chat, proposals, intake, audit). */

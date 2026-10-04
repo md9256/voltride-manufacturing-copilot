@@ -17,14 +17,17 @@ CLIENT_B = {"X-Client-Id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"}
 
 @pytest.fixture
 def provider():
-    return ScriptedProvider([])
+    fake = ScriptedProvider([])
+    # Look like the configured provider and an allowed model, as a real one would.
+    fake.name, fake.model = "gemini", "gemini-3.5-flash"
+    return fake
 
 
 @pytest.fixture
 def api(provider, monkeypatch):
     database = SqliteDb()
     monkeypatch.setattr(main, "upgrade_to_head", lambda: None)  # never touch the real database
-    app.dependency_overrides[chat_api.get_provider] = lambda: provider
+    app.dependency_overrides[chat_api.get_provider_factory] = lambda: lambda model: provider
     app.dependency_overrides[chat_api.get_db_sessionmaker] = database.sessionmaker
     app.dependency_overrides[get_odoo_client] = FakeOdooClient
     # One TestClient context = one event loop for every request, which the
@@ -56,7 +59,8 @@ def test_full_exchange_over_sse(api, provider):
 
     detail = api.get(f"/api/chat/conversations/{conv_id}", headers=CLIENT_A).json()
     assert detail["title"] == "chip stock?"
-    assert detail["can_continue"] is False  # the fake provider is not the configured one
+    assert detail["can_continue"] is True
+    assert detail["model"] == "gemini-3.5-flash"
     assert [m["role"] for m in detail["messages"]] == ["user", "assistant", "tool", "assistant"]
     assert detail["messages"][1]["display"]["tool_calls"][0]["name"] == "get_stock_levels"
     assert "native" not in detail["messages"][0]  # provider formats never reach the browser
@@ -103,7 +107,35 @@ def test_unconfigured_assistant_returns_503(api, monkeypatch):
     def unavailable():
         raise chat_api.HTTPException(503, "AI assistant is not configured: GEMINI_API_KEY is not set")
 
-    app.dependency_overrides[chat_api.get_provider] = unavailable
+    app.dependency_overrides[chat_api.get_provider_factory] = lambda: lambda model: unavailable()
     resp = api.post("/api/chat/conversations", headers=CLIENT_A)
     assert resp.status_code == 503
     assert "GEMINI_API_KEY" in resp.json()["detail"]
+
+
+def test_status_lists_pickable_models(api):
+    body = api.get("/api/chat/status").json()
+    assert [m["id"] for m in body["models"]] == ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.5-flash-lite"]
+    assert body["models"][2]["label"] == "Gemini 3.5 Flash Lite"
+
+
+def test_unknown_model_header_is_rejected(api):
+    app.dependency_overrides.pop(chat_api.get_provider_factory)  # real allowlist check
+    resp = api.post("/api/chat/conversations", headers={**CLIENT_A, "X-LLM-Model": "gpt-9-ultra"})
+    assert resp.status_code == 400
+    assert "not available" in resp.json()["detail"]
+
+
+def test_message_uses_the_conversations_model_not_the_picker(api, provider):
+    asked_for = []
+
+    def factory(model):
+        asked_for.append(model)
+        return provider
+
+    app.dependency_overrides[chat_api.get_provider_factory] = lambda: factory
+    conv_id = new_conversation(api)  # created with the default model
+    provider.turns.append({"deltas": ["ok"]})
+    picker = {**CLIENT_A, "X-LLM-Model": "gemini-3.8-flash"}
+    api.post(f"/api/chat/conversations/{conv_id}/messages", json={"text": "hi"}, headers=picker)
+    assert asked_for[-1] == "gemini-3.5-flash"  # the conversation's model, not the newly picked one

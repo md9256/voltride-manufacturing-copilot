@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.providers import ProviderNotConfigured, make_provider
-from app.api.deps import ClientId, Db, Makers, Provider
+from app.api.deps import ClientId, Db, Makers, Provider, ProviderFactory
 from app.config import get_settings
 from app.models.db import DatabaseNotConfigured, get_sessionmaker
 from app.odoo import OdooClient, get_odoo_client
@@ -34,11 +34,22 @@ Gated = [Depends(require_access)]
 # --- schemas ----------------------------------------------------------------
 
 
+class ModelOption(BaseModel):
+    id: str
+    label: str
+
+
 class ChatStatus(BaseModel):
     enabled: bool
     provider: str
-    model: str
+    model: str  # default model
+    models: list[ModelOption]  # what the UI may pick, default first
     reason: str | None = None
+
+
+def model_label(model: str) -> str:
+    """'gemini-3.5-flash-lite' -> 'Gemini 3.5 Flash Lite'."""
+    return " ".join(part.capitalize() for part in model.split("-"))
 
 
 class ConversationSummary(BaseModel):
@@ -56,8 +67,8 @@ class DisplayMessage(BaseModel):
 
 class ConversationDetail(ConversationSummary):
     messages: list[DisplayMessage]
-    # False when the server's provider changed since this conversation began:
-    # its stored history is in another provider's format and can't continue.
+    # False when this conversation's provider or model is no longer available:
+    # its stored history belongs to that model and can't be continued elsewhere.
     can_continue: bool
 
 
@@ -84,7 +95,11 @@ def status() -> ChatStatus:
     except (ProviderNotConfigured, DatabaseNotConfigured) as exc:
         reason = str(exc)
     return ChatStatus(
-        enabled=reason is None, provider=settings.llm_provider, model=settings.resolved_llm_model, reason=reason
+        enabled=reason is None,
+        provider=settings.llm_provider,
+        model=settings.resolved_llm_model,
+        models=[ModelOption(id=m, label=model_label(m)) for m in settings.allowed_llm_models],
+        reason=reason,
     )
 
 
@@ -105,7 +120,7 @@ async def get_conversation(conversation_id: str, db: Db, client_id: ClientId) ->
     return ConversationDetail(
         **_summary(conv).model_dump(),
         messages=[DisplayMessage(role=m.role, display=m.display) for m in conv.messages],
-        can_continue=conv.provider == get_settings().llm_provider,
+        can_continue=_continuable(conv),
     )
 
 
@@ -123,23 +138,29 @@ async def send_message(
     body: SendMessage,
     client_id: ClientId,
     makers: Makers,
-    provider: Provider,
+    providers: ProviderFactory,
     odoo: Annotated[OdooClient, Depends(get_odoo_client)],
 ) -> StreamingResponse:
     """Stream the assistant's reply as Server-Sent Events.
 
-    Validation (ownership, provider match) happens before the stream starts so
-    it can return proper HTTP errors; the stream then uses its own session,
-    because request-scoped dependencies may be closed before a streamed
-    response finishes.
+    The reply always comes from the conversation's own model, whatever is
+    picked in the UI now: stored history (Gemini thought signatures, Claude
+    thinking blocks) is tied to the model that produced it.
+
+    Validation (ownership, model availability) happens before the stream
+    starts so it can return proper HTTP errors; the stream then uses its own
+    session, because request-scoped dependencies may be closed before a
+    streamed response finishes.
     """
     async with makers() as db:
         conv = await _load(db, client_id, conversation_id)
-        if conv.provider != provider.name:
+        if not _continuable(conv):
             raise HTTPException(
-                409,
-                f"This conversation used {conv.provider}; the server now uses {provider.name}. Start a new one.",
+                409, f"This conversation used {conv.model}, which is no longer available. Start a new one."
             )
+        provider = providers(conv.model)
+        if provider.name != conv.provider:
+            raise HTTPException(409, f"This conversation used {conv.provider}. Start a new one.")
 
     async def events() -> AsyncIterator[str]:
         async with makers() as db:
@@ -153,6 +174,11 @@ async def send_message(
         # Disable proxy buffering so tokens reach the browser as they arrive.
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+def _continuable(conv) -> bool:
+    settings = get_settings()
+    return conv.provider == settings.llm_provider and conv.model in settings.allowed_llm_models
 
 
 async def _load(db: AsyncSession, client_id: str, conversation_id: str):

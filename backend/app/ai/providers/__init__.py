@@ -3,15 +3,36 @@
 from app.ai.providers.base import LLMError, LLMProvider, TextDelta, ToolCall, TurnResult
 from app.config import GEMINI_OPENAI_BASE_URL, Settings
 
-__all__ = ["LLMError", "LLMProvider", "ProviderNotConfigured", "TextDelta", "ToolCall", "TurnResult", "make_provider"]
+__all__ = [
+    "LLMError",
+    "LLMProvider",
+    "ModelNotAllowed",
+    "ProviderNotConfigured",
+    "TextDelta",
+    "ToolCall",
+    "TurnResult",
+    "make_provider",
+]
 
 
 class ProviderNotConfigured(RuntimeError):
     pass
 
 
-def make_provider(settings: Settings) -> LLMProvider:
-    model = settings.resolved_llm_model
+class ModelNotAllowed(ValueError):
+    pass
+
+
+def make_provider(settings: Settings, model: str | None = None) -> LLMProvider:
+    """The configured provider, for `model` (default: the configured model).
+
+    `model` usually comes from the browser, so it must be on the allowlist.
+    """
+    if model and model not in settings.allowed_llm_models:
+        raise ModelNotAllowed(
+            f"Model {model!r} is not available. Choose one of: {', '.join(settings.allowed_llm_models)}"
+        )
+    model = model or settings.resolved_llm_model
     if settings.llm_provider == "gemini":
         if not settings.gemini_api_key:
             raise ProviderNotConfigured("GEMINI_API_KEY is not set")

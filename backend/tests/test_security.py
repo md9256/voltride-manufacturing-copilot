@@ -23,7 +23,8 @@ def api(monkeypatch):
     monkeypatch.setattr(main, "upgrade_to_head", lambda: None)
     database = SqliteDb()
     provider = ScriptedProvider([])
-    app.dependency_overrides[deps.get_provider] = lambda: provider
+    provider.name, provider.model = "gemini", "gemini-3.5-flash"  # an allowed model
+    app.dependency_overrides[deps.get_provider_factory] = lambda: lambda model: provider
     app.dependency_overrides[deps.get_db_sessionmaker] = database.sessionmaker
     app.dependency_overrides[get_odoo_client] = FakeOdooClient
     with TestClient(app) as client:

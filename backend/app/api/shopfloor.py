@@ -98,6 +98,7 @@ async def summary(
                 ProductionSummary.day == day.isoformat(),
                 ProductionSummary.language == body.language,
                 ProductionSummary.facts_hash == digest,
+                ProductionSummary.model == provider.model,  # switching model gives that model's text
             )
             .order_by(ProductionSummary.id.desc())
             .limit(1)

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from 'react'
 import { NavLink, Outlet, useNavigation } from 'react-router'
 import { HealthIndicator } from './components/HealthIndicator'
+import { ModelPicker } from './components/ModelPicker'
 import { ServerGate } from './components/ServerGate'
 
 // The assistant (and its Markdown renderer) loads on first open, then stays
@@ -48,8 +49,9 @@ export default function App() {
               </NavLink>
             ))}
           </nav>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <HealthIndicator />
+            <ModelPicker />
             <button
               type="button"
               onClick={() => {

@@ -8,7 +8,8 @@ import { ApiError, errorFrom, ownedHeaders, ownedRequest } from './client'
 export interface ChatStatus {
   enabled: boolean
   provider: string
-  model: string
+  model: string // the server's default
+  models: { id: string; label: string }[] // what can be picked, default first
   reason: string | null
 }
 

@@ -9,6 +9,7 @@ import {
   useConversations,
 } from '../../api/chat'
 import { useAccessToken, useAuthStatus } from '../../api/access'
+import { useSelectedModel } from '../../api/model'
 import { AccessGate } from '../AccessGate'
 import { ChatMessages } from './ChatMessages'
 import { applyEvent, fromStored, type TranscriptItem } from './transcript'
@@ -36,6 +37,11 @@ export default function ChatPanel({ open, onClose }: { open: boolean; onClose: (
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [items, setItems] = useState<TranscriptItem[]>([])
   const [canContinue, setCanContinue] = useState(true)
+  const [chatModel, setChatModel] = useState<string | null>(null) // the open conversation's model
+  const picked = useSelectedModel()
+  const models = status.data?.models ?? []
+  const pickedModel = models.some((m) => m.id === picked) ? picked! : (status.data?.model ?? null)
+  const label = (id: string | null) => models.find((m) => m.id === id)?.label ?? id ?? ''
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -53,11 +59,13 @@ export default function ChatPanel({ open, onClose }: { open: boolean; onClose: (
     setLoadError(null)
     setConversationId(id)
     setCanContinue(true)
+    setChatModel(null)
     if (!id) return setItems([])
     try {
       const detail = await fetchConversation(id)
       setItems(fromStored(detail.messages))
       setCanContinue(detail.can_continue)
+      setChatModel(detail.model)
     } catch (e) {
       setLoadError((e as Error).message)
     }
@@ -82,8 +90,10 @@ export default function ChatPanel({ open, onClose }: { open: boolean; onClose: (
     try {
       let id = conversationId
       if (!id) {
-        id = (await createConversation()).id
+        const created = await createConversation()
+        id = created.id
         setConversationId(id)
+        setChatModel(created.model)
       }
       await streamMessage(id, question, (event) => updateLastTurn((turn) => applyEvent(turn, event)))
     } catch (e) {
@@ -114,7 +124,7 @@ export default function ChatPanel({ open, onClose }: { open: boolean; onClose: (
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold">Copilot</h2>
           <p className="truncate text-xs text-slate-500">
-            {status.data ? `${status.data.provider} · ${status.data.model} · read-only` : 'Connecting…'}
+            {status.data ? `${label(chatModel ?? pickedModel)} · proposes, never writes` : 'Connecting…'}
           </p>
         </div>
         <button
@@ -201,6 +211,14 @@ export default function ChatPanel({ open, onClose }: { open: boolean; onClose: (
           send(input)
         }}
       >
+        {canContinue && chatModel && pickedModel && chatModel !== pickedModel && (
+          <p className="mb-2 text-xs text-slate-600">
+            This chat uses {label(chatModel)}.{' '}
+            <button type="button" className="font-medium text-teal-700 underline" onClick={() => openConversation(null)}>
+              Start a new chat with {label(pickedModel)}
+            </button>
+          </p>
+        )}
         {!canContinue && (
           <p className="mb-2 text-xs text-amber-700">
             This conversation used a different AI provider. Start a new chat to continue.
