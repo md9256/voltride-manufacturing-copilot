@@ -14,9 +14,12 @@ RUN pip install -r requirements.txt
 
 COPY --chown=app:app app ./app
 COPY --chown=app:app scripts ./scripts
+# Migrations run at startup (app.main lifespan).
+COPY --chown=app:app alembic.ini ./
+COPY --chown=app:app migrations ./migrations
 
 USER app
 EXPOSE 7860
-# Secrets (ODOO_*, DATABASE_URL, ANTHROPIC_API_KEY) come from Space secrets as env vars.
+# Secrets (ODOO_*, DATABASE_URL, GEMINI_API_KEY / ANTHROPIC_API_KEY) come from Space secrets as env vars.
 # The disk is ephemeral, so nothing is written locally.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860", "--proxy-headers", "--forwarded-allow-ips=*"]

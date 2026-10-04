@@ -1,14 +1,36 @@
+import asyncio
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.api import dashboard, health, planning
+from app.api import chat, dashboard, health, planning
+from app.config import get_settings
+from app.models.migrate import upgrade_to_head
 from app.odoo import OdooAuthError, OdooError
 from app.services.bom import BomCycleError, BomError, UnknownProductError
 
-app = FastAPI(title="VoltRide Manufacturing Copilot", version="0.2.0")
+log = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Apply pending migrations on startup: one container, one instance, so
+    # there is no race between replicas. Without a database the rest of the
+    # API still works and the chat endpoints report themselves unavailable.
+    if get_settings().database_url:
+        await asyncio.to_thread(upgrade_to_head)
+    else:
+        log.warning("DATABASE_URL not set: chat history is disabled")
+    yield
+
+
+app = FastAPI(title="VoltRide Manufacturing Copilot", version="0.3.0", lifespan=lifespan)
 app.include_router(health.router)
 app.include_router(dashboard.router)
 app.include_router(planning.router)
+app.include_router(chat.router)
 
 
 @app.exception_handler(OdooError)
