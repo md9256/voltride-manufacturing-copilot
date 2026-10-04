@@ -1,4 +1,4 @@
-import type { DeliveryStatus, ProductionState, SaleState } from '../api/types'
+import type { DeliveryStatus, NodeStatus, ProductionState, SaleState } from '../api/types'
 
 const TONES = {
   grey: 'bg-slate-100 text-slate-700',
@@ -51,3 +51,15 @@ export const SaleBadge = ({ state, delivery }: { state: SaleState; delivery: Del
   return <Badge label={label} tone={tone} />
 }
 
+
+const NODE: Record<NodeStatus, [string, keyof typeof TONES]> = {
+  ok: ['In stock', 'green'],
+  build: ['To build', 'blue'],
+  incoming: ['Incoming', 'amber'],
+  short: ['Short', 'red'],
+}
+
+export const NodeStatusBadge = ({ status }: { status: NodeStatus }) => {
+  const [label, tone] = NODE[status]
+  return <Badge label={label} tone={tone} />
+}

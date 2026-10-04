@@ -4,7 +4,7 @@ A web app on top of Odoo for a fictional e-bike drive-system manufacturer:
 production dashboard, BOM explorer and planner, and an AI assistant that works
 through typed, validated tools. See [SPEC.md](SPEC.md) for the full plan.
 
-> Work in progress. Phase 1 (foundation) is done; the full README with the
+> Work in progress. Phases 1-2 (dashboard, BOM explorer, planner, demo mode) are done; the full README with the
 > architecture diagram, deployment and AI safety design lands in Phase 6.
 
 ## Layout
@@ -15,8 +15,10 @@ frontend/  React + TypeScript + Vite dashboard
 ```
 
 The back end reads Odoo only through the `OdooClient` interface in
-`backend/app/odoo` (`live` today, `demo` from Phase 2). Business rules live in
-`backend/app/services` as pure functions and are tested without Odoo.
+`backend/app/odoo`: `live` calls Odoo's JSON-2 API, `demo` serves a JSON snapshot
+(`ODOO_MODE=demo`), so the public demo survives the Odoo trial expiring. BOM
+explosion, MRP netting and the planner live in `backend/app/services` as pure
+functions and are tested with fixtures, without Odoo.
 
 ## Local development
 
@@ -31,6 +33,7 @@ python -m venv .venv && .venv/Scripts/activate   # or source .venv/bin/activate
 pip install -r requirements-dev.txt
 python scripts/check_odoo.py          # connection + permissions check
 python -m scripts.seed_odoo           # populate Odoo (safe to re-run)
+python -m scripts.export_snapshot     # refresh the demo-mode snapshot
 uvicorn app.main:app --reload         # http://localhost:8000/docs
 pytest && ruff check .
 
@@ -48,3 +51,7 @@ from Phase 3) instead of the venv.
 1. Update `ODOO_URL`, `ODOO_DB` and `ODOO_API_KEY` in `.env`.
 2. `python scripts/check_odoo.py`
 3. `python -m scripts.seed_odoo`
+
+If the trial has already expired, set `ODOO_MODE=demo`: the app keeps working
+from `backend/app/odoo/snapshot/voltride.json`. Refresh that snapshot with
+`python -m scripts.export_snapshot` whenever the seed data changes.
