@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from 'react'
 import { NavLink, Outlet, useNavigation } from 'react-router'
 import { HealthIndicator } from './components/HealthIndicator'
+import { ServerGate } from './components/ServerGate'
 
 // The assistant (and its Markdown renderer) loads on first open, then stays
 // mounted so a reply keeps streaming while the panel is closed.
@@ -64,9 +65,11 @@ export default function App() {
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        <div className={navigating ? 'opacity-60 transition-opacity' : undefined}>
-          <Outlet />
-        </div>
+        <ServerGate>
+          <div className={navigating ? 'opacity-60 transition-opacity' : undefined}>
+            <Outlet />
+          </div>
+        </ServerGate>
       </main>
       {chatLoaded && (
         <Suspense fallback={null}>

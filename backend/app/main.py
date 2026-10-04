@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.api import actions, audit, chat, dashboard, health, intake, planning, shopfloor
+from app.api import actions, audit, auth, chat, dashboard, health, intake, planning, shopfloor
 from app.config import get_settings
 from app.models.migrate import upgrade_to_head
 from app.odoo import OdooAuthError, OdooError
@@ -26,8 +26,23 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="VoltRide Manufacturing Copilot", version="0.5.0", lifespan=lifespan)
+app = FastAPI(title="VoltRide Manufacturing Copilot", version="1.0.0", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    # The API only serves JSON / event streams: forbid MIME sniffing, framing
+    # and referrer leakage. (The front end's headers are set in vercel.json.)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Cache-Control", "no-store")
+    return response
+
+
 app.include_router(health.router)
+app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(planning.router)
 app.include_router(chat.router)

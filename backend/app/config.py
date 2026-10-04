@@ -47,6 +47,13 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     anthropic_api_key: str = ""
 
+    # Public demo protection (see app/security.py). Empty DEMO_PASSWORD = open.
+    demo_password: str = ""
+    auth_secret: str = ""  # signs access tokens; set a long random value in production
+    ai_rate_per_minute: int = 10
+    ai_rate_per_day: int = 60
+    ai_rate_global_per_day: int = 300
+
     @property
     def resolved_llm_model(self) -> str:
         return self.llm_model or DEFAULT_MODELS.get(self.llm_provider, "")

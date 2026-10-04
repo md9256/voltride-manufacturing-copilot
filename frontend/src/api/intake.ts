@@ -1,4 +1,5 @@
-import { ApiError, clientId, errorFrom, ownedPost } from './client'
+import { clearAccessToken } from './access'
+import { ApiError, errorFrom, ownedHeaders, ownedPost } from './client'
 import type { ActionView } from './actions'
 
 // Mirrors backend/app/schemas/intake.py
@@ -69,10 +70,11 @@ export async function uploadQuote(file: File): Promise<QuoteReview> {
   form.append('file', file)
   let response: Response
   try {
-    response = await fetch('/api/intake/quotes', { method: 'POST', body: form, headers: { 'X-Client-Id': clientId() } })
+    response = await fetch('/api/intake/quotes', { method: 'POST', body: form, headers: ownedHeaders() })
   } catch {
     throw new ApiError(0, 'Cannot reach the server.')
   }
+  if (response.status === 401) clearAccessToken()
   if (!response.ok) throw await errorFrom(response)
   return response.json()
 }

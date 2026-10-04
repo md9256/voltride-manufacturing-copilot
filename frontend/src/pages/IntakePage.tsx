@@ -11,6 +11,7 @@ import {
   type QuoteReview,
 } from '../api/intake'
 import { useProducts } from '../api/planning'
+import { AccessGate } from '../components/AccessGate'
 import { Card } from '../components/Card'
 import { ProposalCard } from '../components/ProposalCard'
 import { formatMoney } from '../components/format'
@@ -61,6 +62,7 @@ export function IntakePage() {
         </p>
       </div>
 
+      <AccessGate what="Quote intake">
       {!review && <UploadBox busy={upload.isPending} error={upload.error?.message} onFile={(f) => upload.mutate(f)} />}
 
       {review && (
@@ -100,6 +102,7 @@ export function IntakePage() {
           {proposal && <ProposalCard id={proposal.id} initial={proposal} />}
         </>
       )}
+      </AccessGate>
     </div>
   )
 }

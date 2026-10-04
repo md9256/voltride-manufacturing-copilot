@@ -74,6 +74,18 @@ async def run_chat_turn(
                 else:
                     result = item
         except LLMError as exc:
+            await audit.record(
+                session,
+                kind="error",
+                name="llm",
+                owner_id=conv.owner_id,
+                conversation_id=conv.id,
+                question=text,
+                result={"error": str(exc)},
+                ok=False,
+                provider=provider.name,
+                model=provider.model,
+            )
             yield ChatEvent("error", {"message": str(exc)})
             return
         assert result is not None, "provider ended a turn without a TurnResult"

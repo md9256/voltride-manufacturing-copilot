@@ -8,6 +8,8 @@ import {
   useChatStatus,
   useConversations,
 } from '../../api/chat'
+import { useAccessToken, useAuthStatus } from '../../api/access'
+import { AccessGate } from '../AccessGate'
 import { ChatMessages } from './ChatMessages'
 import { applyEvent, fromStored, type TranscriptItem } from './transcript'
 
@@ -24,7 +26,10 @@ type AssistantTurn = Extract<TranscriptItem, { kind: 'assistant' }>
 
 export default function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const status = useChatStatus()
-  const enabled = status.data?.enabled ?? false
+  const authRequired = useAuthStatus().data?.required ?? true
+  const token = useAccessToken()
+  // Configured on the server, and (on the public demo) unlocked with the password.
+  const enabled = (status.data?.enabled ?? false) && (!authRequired || token !== null)
   const conversations = useConversations(enabled)
   const queryClient = useQueryClient()
 
@@ -155,7 +160,9 @@ export default function ChatPanel({ open, onClose }: { open: boolean; onClose: (
       )}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
-        {status.data && !enabled ? (
+        {status.data?.enabled && !enabled ? (
+          <AccessGate what="The AI assistant">{null}</AccessGate>
+        ) : status.data && !enabled ? (
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
             The assistant is not available on this server: {status.data.reason}
           </p>

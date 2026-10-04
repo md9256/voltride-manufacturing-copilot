@@ -7,13 +7,14 @@ organisation-wide view then becomes an admin-only endpoint.
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from app.api.deps import ClientId, Db
+from app.security import require_access
 from app.services import audit
 
-router = APIRouter(prefix="/api/audit", tags=["audit"])
+router = APIRouter(prefix="/api/audit", tags=["audit"], dependencies=[Depends(require_access)])
 
 
 class AuditEntryView(BaseModel):
@@ -35,7 +36,7 @@ class AuditEntryView(BaseModel):
 async def list_audit(
     db: Db,
     client_id: ClientId,
-    kind: Literal["tool_call", "action", "extraction", "summary"] | None = None,
+    kind: Literal["tool_call", "action", "extraction", "summary", "error"] | None = None,
     conversation_id: str | None = None,
     before_id: int | None = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,

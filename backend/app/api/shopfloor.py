@@ -9,7 +9,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 
 from app.ai.providers import LLMError
@@ -19,6 +19,7 @@ from app.config import get_settings
 from app.models.actions import ProductionSummary
 from app.odoo import OdooClient, get_odoo_client
 from app.schemas.shopfloor import DailyFacts, ShopfloorStats, SummaryRequest, SummaryView, Timeline
+from app.security import ai_limiter, client_ip, require_access
 from app.services import audit
 from app.services import shopfloor as rules
 
@@ -81,8 +82,10 @@ def facts_hash(facts: DailyFacts) -> str:
     return hashlib.sha256(facts.model_dump_json(exclude={"as_of"}).encode()).hexdigest()
 
 
-@router.post("/summary", response_model=SummaryView)
-async def summary(body: SummaryRequest, db: Db, client_id: ClientId, provider: Provider, odoo: Odoo) -> SummaryView:
+@router.post("/summary", response_model=SummaryView, dependencies=[Depends(require_access)])
+async def summary(
+    body: SummaryRequest, request: Request, db: Db, client_id: ClientId, provider: Provider, odoo: Odoo
+) -> SummaryView:
     tz = ZoneInfo(get_settings().company_timezone)
     day = body.day or _now().astimezone(tz).date()
     facts = await asyncio.to_thread(facts_for, odoo, day)
@@ -102,6 +105,8 @@ async def summary(body: SummaryRequest, db: Db, client_id: ClientId, provider: P
         if cached:
             return _view(cached, facts, cached=True)
 
+    # Rate-limit only real generations: a cached summary costs no LLM call.
+    ai_limiter.check(client_ip(request))
     started = time.perf_counter()
     try:
         text = await write_summary(provider, facts, body.language)

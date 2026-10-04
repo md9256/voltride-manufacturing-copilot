@@ -11,9 +11,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.api.deps import ClientId, Db
 from app.odoo import OdooClient, get_odoo_client
 from app.schemas.actions import ActionView
+from app.security import require_access
 from app.services import actions
 
-router = APIRouter(prefix="/api/actions", tags=["actions"])
+router = APIRouter(prefix="/api/actions", tags=["actions"], dependencies=[Depends(require_access)])
 
 
 @router.get("/{action_id}", response_model=ActionView)

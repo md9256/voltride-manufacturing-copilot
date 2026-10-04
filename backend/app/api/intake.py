@@ -27,12 +27,13 @@ from app.models.actions import ProposedAction, QuoteReview
 from app.odoo import OdooClient, get_odoo_client
 from app.schemas.actions import ActionView
 from app.schemas.intake import ExtractedQuote, QuoteReviewView, ReviewCorrections
+from app.security import limit_ai, require_access
 from app.services import actions, audit
 from app.services.bom import ManufacturingData
 from app.services.purchasing import ProposalError
 from app.services.quote_intake import ReviewContext, build_review, review_to_proposal
 
-router = APIRouter(prefix="/api/intake", tags=["intake"])
+router = APIRouter(prefix="/api/intake", tags=["intake"], dependencies=[Depends(require_access)])
 
 MAX_PDF_BYTES = 10 * 1024 * 1024
 MAX_PAGES = 20
@@ -55,7 +56,7 @@ def check_pdf(content: bytes) -> int:
     return pages
 
 
-@router.post("/quotes", response_model=QuoteReviewView)
+@router.post("/quotes", response_model=QuoteReviewView, dependencies=[Depends(limit_ai)])
 async def upload_quote(
     file: UploadFile, db: Db, client_id: ClientId, provider: Provider, odoo: Odoo
 ) -> QuoteReviewView:

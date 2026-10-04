@@ -2,8 +2,21 @@ import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from app.config import get_settings
 from app.models import actions, chat  # noqa: F401  (registers tables)
 from app.models.db import Base
+from app.security import ai_limiter, login_limiter
+
+
+@pytest.fixture(autouse=True)
+def isolated_security(monkeypatch):
+    """Every test starts with empty rate limits and no demo password, whatever
+    the local .env says; tests/test_security.py turns the password on."""
+    monkeypatch.setattr(get_settings(), "demo_password", "")
+    monkeypatch.setattr(get_settings(), "auth_secret", "test-secret")
+    ai_limiter.reset()
+    login_limiter.reset()
+    yield
 
 
 class SqliteDb:

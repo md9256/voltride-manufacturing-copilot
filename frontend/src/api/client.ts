@@ -1,3 +1,5 @@
+import { accessToken, clearAccessToken } from './access'
+
 // Minimal typed fetch wrapper. All requests are same-origin `/api/...`
 // (Vite proxy in dev, Vercel rewrite in production).
 
@@ -47,7 +49,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch {
     throw new ApiError(0, 'Cannot reach the server.')
   }
-  if (!response.ok) throw await errorFrom(response)
+  if (!response.ok) {
+    // A rejected access token: forget it so the password form shows again.
+    if (response.status === 401 && (init?.headers as Record<string, string> | undefined)?.Authorization) clearAccessToken()
+    throw await errorFrom(response)
+  }
   return (response.status === 204 ? undefined : await response.json()) as T
 }
 
@@ -56,9 +62,15 @@ export const getJson = <T>(path: string) => request<T>(path)
 export const postJson = <T>(path: string, body: unknown) =>
   request<T>(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
 
+/** Headers for requests scoped to this browser: client id, plus the demo access token if held. */
+export function ownedHeaders(): Record<string, string> {
+  const token = accessToken()
+  return { 'X-Client-Id': clientId(), ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+}
+
 /** A request scoped to this browser's client id (chat, proposals, intake, audit). */
 export const ownedRequest = <T>(path: string, init?: RequestInit) =>
-  request<T>(path, { ...init, headers: { 'X-Client-Id': clientId(), ...init?.headers } })
+  request<T>(path, { ...init, headers: { ...ownedHeaders(), ...(init?.headers as Record<string, string>) } })
 
 export const ownedPost = <T>(path: string, body?: unknown) =>
   ownedRequest<T>(path, {

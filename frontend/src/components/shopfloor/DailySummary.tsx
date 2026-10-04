@@ -2,6 +2,7 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useState } from 'react'
 import { useSummary, type SummaryLanguage } from '../../api/shopfloor'
+import { AccessGate } from '../AccessGate'
 import { Card } from '../Card'
 
 const LANGUAGES: [SummaryLanguage, string][] = [
@@ -25,6 +26,7 @@ export function DailySummary({ today }: { today: string }) {
       title="Daily production briefing"
       subtitle="Figures are computed from ERP data; AI writes the text, and every number in it is checked against those figures."
     >
+      <AccessGate what="The AI briefing">
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
           Day
@@ -95,6 +97,7 @@ export function DailySummary({ today }: { today: string }) {
           </details>
         </div>
       )}
+      </AccessGate>
     </Card>
   )
 }

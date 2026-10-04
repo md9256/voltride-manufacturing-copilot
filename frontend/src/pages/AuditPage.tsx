@@ -1,13 +1,14 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { ownedRequest } from '../api/client'
+import { AccessGate } from '../components/AccessGate'
 import { Card } from '../components/Card'
 
 interface AuditEntry {
   id: number
   created_at: string
   conversation_id: string | null
-  kind: 'tool_call' | 'action' | 'extraction' | 'summary'
+  kind: 'tool_call' | 'action' | 'extraction' | 'summary' | 'error'
   name: string
   question: string | null
   params: Record<string, unknown> | null
@@ -25,9 +26,18 @@ const KINDS = [
   ['action', 'Proposals & decisions'],
   ['extraction', 'Document extractions'],
   ['summary', 'Daily summaries'],
+  ['error', 'AI errors'],
 ] as const
 
 export function AuditPage() {
+  return (
+    <AccessGate what="The audit log">
+      <AuditLog />
+    </AccessGate>
+  )
+}
+
+function AuditLog() {
   const [kind, setKind] = useState('')
   const query = useInfiniteQuery({
     queryKey: ['audit', kind],

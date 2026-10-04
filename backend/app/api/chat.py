@@ -23,10 +23,12 @@ from app.api.deps import ClientId, Db, Makers, Provider
 from app.config import get_settings
 from app.models.db import DatabaseNotConfigured, get_sessionmaker
 from app.odoo import OdooClient, get_odoo_client
+from app.security import AiAccess, require_access
 from app.services import chat_store
 from app.services.chat import run_chat_turn
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
+Gated = [Depends(require_access)]
 
 
 # --- schemas ----------------------------------------------------------------
@@ -86,18 +88,18 @@ def status() -> ChatStatus:
     )
 
 
-@router.get("/conversations", response_model=list[ConversationSummary])
+@router.get("/conversations", response_model=list[ConversationSummary], dependencies=Gated)
 async def list_conversations(db: Db, client_id: ClientId) -> list[ConversationSummary]:
     return [_summary(c) for c in await chat_store.list_conversations(db, client_id)]
 
 
-@router.post("/conversations", response_model=ConversationSummary, status_code=201)
+@router.post("/conversations", response_model=ConversationSummary, status_code=201, dependencies=Gated)
 async def create_conversation(db: Db, client_id: ClientId, provider: Provider) -> ConversationSummary:
     conv = await chat_store.create_conversation(db, owner_id=client_id, provider=provider.name, model=provider.model)
     return _summary(conv)
 
 
-@router.get("/conversations/{conversation_id}", response_model=ConversationDetail)
+@router.get("/conversations/{conversation_id}", response_model=ConversationDetail, dependencies=Gated)
 async def get_conversation(conversation_id: str, db: Db, client_id: ClientId) -> ConversationDetail:
     conv = await _load(db, client_id, conversation_id)
     return ConversationDetail(
@@ -107,7 +109,7 @@ async def get_conversation(conversation_id: str, db: Db, client_id: ClientId) ->
     )
 
 
-@router.delete("/conversations/{conversation_id}", status_code=204)
+@router.delete("/conversations/{conversation_id}", status_code=204, dependencies=Gated)
 async def delete_conversation(conversation_id: str, db: Db, client_id: ClientId) -> None:
     try:
         await chat_store.delete_conversation(db, client_id, conversation_id)
@@ -115,7 +117,7 @@ async def delete_conversation(conversation_id: str, db: Db, client_id: ClientId)
         raise HTTPException(404, "Conversation not found") from None
 
 
-@router.post("/conversations/{conversation_id}/messages")
+@router.post("/conversations/{conversation_id}/messages", dependencies=AiAccess)
 async def send_message(
     conversation_id: str,
     body: SendMessage,

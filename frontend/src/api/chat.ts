@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import type { ActionView } from './actions'
-import { ApiError, clientId, errorFrom, ownedRequest } from './client'
+import { clearAccessToken } from './access'
+import { ApiError, errorFrom, ownedHeaders, ownedRequest } from './client'
 
 // --- types (mirror backend/app/api/chat.py) ---
 
@@ -73,7 +74,7 @@ export async function streamMessage(
   try {
     response = await fetch(`/api/chat/conversations/${conversationId}/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Client-Id': clientId() },
+      headers: { 'Content-Type': 'application/json', ...ownedHeaders() },
       body: JSON.stringify({ text }),
       signal,
     })
@@ -81,6 +82,7 @@ export async function streamMessage(
     if (signal?.aborted) return
     throw new ApiError(0, 'Cannot reach the server.')
   }
+  if (response.status === 401) clearAccessToken()
   if (!response.ok || !response.body) throw await errorFrom(response)
 
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
