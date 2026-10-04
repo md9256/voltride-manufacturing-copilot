@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import sys
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.config import get_settings
 from app.odoo.rpc import OdooError, OdooRpc
@@ -25,7 +25,7 @@ ODOO_DT = "%Y-%m-%d %H:%M:%S"  # Odoo datetimes are naive UTC strings
 
 
 def days_ago(days: int, hour: int = 9) -> str:
-    dt = datetime.now(timezone.utc).replace(hour=hour, minute=0, second=0, microsecond=0) - timedelta(days=days)
+    dt = datetime.now(UTC).replace(hour=hour, minute=0, second=0, microsecond=0) - timedelta(days=days)
     return dt.strftime(ODOO_DT)
 
 
@@ -78,19 +78,25 @@ class Seeder:
     def partners(self) -> None:
         for s in data.SUPPLIERS:
             self.partner_ids[s.ref], _ = self._ensure(
-                "supplier", "res.partner", [["ref", "=", s.ref]],
+                "supplier",
+                "res.partner",
+                [["ref", "=", s.ref]],
                 {"name": s.name, "ref": s.ref, "city": s.city, "is_company": True, "supplier_rank": 1},
             )
         for c in data.CUSTOMERS:
             self.partner_ids[c.ref], _ = self._ensure(
-                "customer", "res.partner", [["ref", "=", c.ref]],
+                "customer",
+                "res.partner",
+                [["ref", "=", c.ref]],
                 {"name": c.name, "ref": c.ref, "city": c.city, "is_company": True, "customer_rank": 1},
             )
 
     def work_centers(self) -> None:
         for wc in data.WORK_CENTERS:
             self.workcenter_ids[wc.code], _ = self._ensure(
-                "work center", "mrp.workcenter", [["code", "=", wc.code]],
+                "work center",
+                "mrp.workcenter",
+                [["code", "=", wc.code]],
                 {"name": wc.name, "code": wc.code, "costs_hour": wc.cost_per_hour},
             )
 
@@ -102,20 +108,34 @@ class Seeder:
 
         for c in data.COMPONENTS:
             vals = base | {
-                "name": c.name, "default_code": c.code, "standard_price": c.cost,
-                "sale_ok": False, "purchase_ok": True,
-                "seller_ids": [[0, 0, {
-                    "partner_id": self.partner_ids[c.supplier], "price": c.cost,
-                    "delay": c.lead_days, "min_qty": 1,
-                }]],
+                "name": c.name,
+                "default_code": c.code,
+                "standard_price": c.cost,
+                "sale_ok": False,
+                "purchase_ok": True,
+                "seller_ids": [
+                    [
+                        0,
+                        0,
+                        {
+                            "partner_id": self.partner_ids[c.supplier],
+                            "price": c.cost,
+                            "delay": c.lead_days,
+                            "min_qty": 1,
+                        },
+                    ]
+                ],
             }
             self._ensure_product(c.code, vals)
 
         for m in data.MANUFACTURED:
             is_kit = m.sale_price > 0
             vals = base | {
-                "name": m.name, "default_code": m.code, "list_price": m.sale_price,
-                "sale_ok": is_kit, "purchase_ok": False,
+                "name": m.name,
+                "default_code": m.code,
+                "list_price": m.sale_price,
+                "sale_ok": is_kit,
+                "purchase_ok": False,
             }
             self._ensure_product(m.code, vals)
 
@@ -138,16 +158,21 @@ class Seeder:
                     [0, 0, {"product_id": self.product_ids[code], "product_qty": qty}] for code, qty in m.lines.items()
                 ],
                 "operation_ids": [
-                    [0, 0, {
-                        "name": op.name, "workcenter_id": self.workcenter_ids[op.workcenter],
-                        "time_mode": "manual", "time_cycle_manual": op.minutes, "sequence": (i + 1) * 10,
-                    }]
+                    [
+                        0,
+                        0,
+                        {
+                            "name": op.name,
+                            "workcenter_id": self.workcenter_ids[op.workcenter],
+                            "time_mode": "manual",
+                            "time_cycle_manual": op.minutes,
+                            "sequence": (i + 1) * 10,
+                        },
+                    ]
                     for i, op in enumerate(m.operations)
                 ],
             }
-            self.bom_ids[m.code], _ = self._ensure(
-                "BOM", "mrp.bom", [["code", "=", f"SEED-{m.code}"]], vals
-            )
+            self.bom_ids[m.code], _ = self._ensure("BOM", "mrp.bom", [["code", "=", f"SEED-{m.code}"]], vals)
 
     def stock(self) -> None:
         """Set opening stock, but only for products created in this run.
@@ -163,11 +188,13 @@ class Seeder:
                 continue
             # Quants can only be created in "inventory mode", the same path as
             # a physical inventory count in the UI.
-            quant_ids.append(self.rpc.create(
-                "stock.quant",
-                {"product_id": self.product_ids[code], "location_id": stock_location, "inventory_quantity": qty},
-                context={"inventory_mode": True},
-            ))
+            quant_ids.append(
+                self.rpc.create(
+                    "stock.quant",
+                    {"product_id": self.product_ids[code], "location_id": stock_location, "inventory_quantity": qty},
+                    context={"inventory_mode": True},
+                )
+            )
         if quant_ids:
             self.rpc.call("stock.quant", "action_apply_inventory", ids=quant_ids, context={"inventory_mode": True})
         self.stats["stock count applied"] += len(quant_ids)
@@ -175,20 +202,29 @@ class Seeder:
     def reorder_rules(self) -> None:
         for c in data.COMPONENTS:
             self._ensure(
-                "reorder rule", "stock.warehouse.orderpoint", [["product_id", "=", self.product_ids[c.code]]],
+                "reorder rule",
+                "stock.warehouse.orderpoint",
+                [["product_id", "=", self.product_ids[c.code]]],
                 # Manual trigger: Odoo shows the rule in the replenishment report
                 # but never auto-creates purchase orders from it.
-                {"product_id": self.product_ids[c.code], "product_min_qty": c.min_qty,
-                 "product_max_qty": c.max_qty, "trigger": "manual"},
+                {
+                    "product_id": self.product_ids[c.code],
+                    "product_min_qty": c.min_qty,
+                    "product_max_qty": c.max_qty,
+                    "trigger": "manual",
+                },
             )
 
     def purchase_orders(self) -> None:
         cost = {c.code: c.cost for c in data.COMPONENTS}
         for po in data.PURCHASE_ORDERS:
             po_id, created = self._ensure(
-                "purchase order", "purchase.order", [["partner_ref", "=", po.ref]],
+                "purchase order",
+                "purchase.order",
+                [["partner_ref", "=", po.ref]],
                 {
-                    "partner_id": self.partner_ids[po.supplier], "partner_ref": po.ref,
+                    "partner_id": self.partner_ids[po.supplier],
+                    "partner_ref": po.ref,
                     "date_order": days_ago(po.days_ago),
                     "order_line": [
                         [0, 0, {"product_id": self.product_ids[code], "product_qty": qty, "price_unit": cost[code]}]
@@ -204,12 +240,19 @@ class Seeder:
         for so in data.SALE_ORDERS:
             date_order = days_ago(so.days_ago)
             so_id, created = self._ensure(
-                "sale order", "sale.order", [["client_order_ref", "=", so.ref]],
+                "sale order",
+                "sale.order",
+                [["client_order_ref", "=", so.ref]],
                 {
-                    "partner_id": self.partner_ids[so.customer], "client_order_ref": so.ref,
+                    "partner_id": self.partner_ids[so.customer],
+                    "client_order_ref": so.ref,
                     "date_order": date_order,
                     "order_line": [
-                        [0, 0, {"product_id": self.product_ids[code], "product_uom_qty": qty, "price_unit": price[code]}]
+                        [
+                            0,
+                            0,
+                            {"product_id": self.product_ids[code], "product_uom_qty": qty, "price_unit": price[code]},
+                        ]
                         for code, qty in so.lines.items()
                     ],
                 },
@@ -235,10 +278,14 @@ class Seeder:
         """
         for mo in data.MANUFACTURING_ORDERS:
             mo_id, _ = self._ensure(
-                "manufacturing order", "mrp.production", [["origin", "=", mo.ref]],
+                "manufacturing order",
+                "mrp.production",
+                [["origin", "=", mo.ref]],
                 {
-                    "product_id": self.product_ids[mo.product], "product_qty": mo.qty,
-                    "bom_id": self.bom_ids[mo.product], "origin": mo.ref,
+                    "product_id": self.product_ids[mo.product],
+                    "product_qty": mo.qty,
+                    "bom_id": self.bom_ids[mo.product],
+                    "origin": mo.ref,
                     "date_start": days_ago(mo.days_ago, hour=8),
                 },
             )
@@ -270,8 +317,10 @@ class Seeder:
     def _finish_workorders(self, mo_id: int, mo: data.ManufacturingOrder, limit: int | None = None) -> datetime:
         """Finish work orders with historical dates and actual durations; returns the end time."""
         workorders = self.rpc.search_read(
-            "mrp.workorder", [["production_id", "=", mo_id], ["state", "not in", ["done", "cancel"]]],
-            ["id", "duration_expected"], order="id",
+            "mrp.workorder",
+            [["production_id", "=", mo_id], ["state", "not in", ["done", "cancel"]]],
+            ["id", "duration_expected"],
+            order="id",
         )
         start = datetime.strptime(days_ago(mo.days_ago, hour=8), ODOO_DT)
         for wo in workorders[:limit]:
@@ -279,9 +328,15 @@ class Seeder:
             end = start + timedelta(minutes=minutes)
             # Writing `duration` makes Odoo log a matching time entry, which is
             # what the planned-vs-actual comparison reads later.
-            self.rpc.write("mrp.workorder", [wo["id"]], {
-                "duration": minutes, "date_start": start.strftime(ODOO_DT), "date_finished": end.strftime(ODOO_DT),
-            })
+            self.rpc.write(
+                "mrp.workorder",
+                [wo["id"]],
+                {
+                    "duration": minutes,
+                    "date_start": start.strftime(ODOO_DT),
+                    "date_finished": end.strftime(ODOO_DT),
+                },
+            )
             self.rpc.call("mrp.workorder", "button_finish", ids=[wo["id"]])
             # button_finish stamps date_finished with "now"; restore history.
             self.rpc.write("mrp.workorder", [wo["id"]], {"date_finished": end.strftime(ODOO_DT)})

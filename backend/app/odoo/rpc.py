@@ -108,6 +108,15 @@ class OdooRpc:
             time.sleep(self._backoff_s * 2**attempt)
             attempt += 1
 
+    def server_version(self) -> str:
+        """Server version from the unauthenticated /web/version endpoint."""
+        try:
+            resp = self._client.get("/web/version")
+            resp.raise_for_status()
+            return resp.json()["version"]
+        except (httpx.HTTPError, ValueError, KeyError) as exc:
+            raise OdooError(f"cannot read server version: {exc}") from exc
+
     # Thin conveniences over call(); they keep calling code readable.
 
     def search_read(

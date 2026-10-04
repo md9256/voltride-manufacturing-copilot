@@ -22,9 +22,10 @@ import os
 import sys
 import uuid
 import xmlrpc.client
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import httpx
 from dotenv import load_dotenv
@@ -226,7 +227,9 @@ def check_read(odoo, model: str) -> str:
 def check_write(odoo) -> str:
     """Create a uniquely named contact, read it back, delete it, verify it's gone."""
     name = f"check_odoo probe {uuid.uuid4().hex[:8]}"
-    created = odoo.call("res.partner", "create", vals_list=[{"name": name, "comment": "Temporary record from check_odoo.py"}])
+    created = odoo.call(
+        "res.partner", "create", vals_list=[{"name": name, "comment": "Temporary record from check_odoo.py"}]
+    )
     partner_id = created[0] if isinstance(created, list) else created
     try:
         rows = odoo.call("res.partner", "read", ids=[partner_id], fields=["name"])
