@@ -35,7 +35,7 @@ while the free-tier API starts.
 ```mermaid
 flowchart LR
     U([Browser]) -->|HTTPS| V["Vercel<br/>React + Vite static build"]
-    V -->|"/api/* rewrite<br/>(same origin, no CORS)"| H["Hugging Face Space<br/>FastAPI in Docker"]
+    V -->|"/api/* rewrite<br/>(same origin, no CORS)"| H["Render web service<br/>FastAPI in Docker"]
     H -->|"JSON-2 API<br/>(typed client only)"| O[("Odoo 20<br/>odoo.com trial")]
     H -->|"tool calls,<br/>PDF extraction, summaries"| L["LLM<br/>Gemini (default) or Claude"]
     H -->|"SQLAlchemy async"| N[("Neon Postgres<br/>chat history, proposals,<br/>audit log, summary cache")]
@@ -98,7 +98,7 @@ The LLM is treated as untrusted input at every boundary.
 **Front end:** React 19, TypeScript, Vite, Tailwind CSS 4, TanStack Query, React Router, React Flow + dagre, Recharts.
 **Back end:** Python 3.12, FastAPI, Pydantic 2, SQLAlchemy 2 (async, asyncpg), Alembic, httpx.
 **AI:** a provider interface with an OpenAI-compatible adapter (Google Gemini by default, also Hugging Face router or Groq) and an Anthropic adapter (Claude).
-**Infra:** Vercel, Hugging Face Spaces (Docker), Neon Postgres, Odoo 20 (odoo.com).
+**Infra:** Vercel, Render (Docker), Neon Postgres, Odoo 20 (odoo.com).
 
 ```
 backend/   FastAPI app (api, odoo, services, ai, models, schemas), Alembic migrations,
@@ -134,27 +134,29 @@ and simulates writes. Refresh it with `python -m scripts.export_snapshot`.
 
 ## Deploying
 
-**Back end (Hugging Face Space, Docker SDK).** Create a Docker Space and push
-the contents of `backend/` to it; the Space README needs `sdk: docker` and
-`app_port: 7860`. Set as Space secrets: `ODOO_URL`, `ODOO_DB`, `ODOO_USER`,
-`ODOO_API_KEY`, `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `GEMINI_API_KEY`,
-`DEMO_PASSWORD`, `AUTH_SECRET`, plus `ODOO_MODE` and `LLM_PROVIDER`. The
-container runs as uid 1000, applies migrations at startup and writes nothing
-to disk.
+**Back end (Render, free Docker web service).** `render.yaml` is a Blueprint:
+in Render choose *New → Blueprint*, pick this repository, and enter the
+secrets it asks for (`ODOO_URL`, `ODOO_DB`, `ODOO_USER`, `ODOO_API_KEY`,
+`DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `GEMINI_API_KEY`, `DEMO_PASSWORD`;
+`AUTH_SECRET` is generated). The free instance sleeps after 15 idle minutes,
+which the front end's "waking up" screen covers. The image runs as an
+unprivileged user, listens on `$PORT`, applies migrations at startup and
+writes nothing to disk. (The spec named Hugging Face Spaces, but Docker Spaces
+now need a paid plan; the same image runs there unchanged on port 7860.)
 
 **Front end (Vercel).** Import `frontend/` (framework: Vite). `vercel.json`
-rewrites `/api/*` to the Space's `*.hf.space` URL and serves `index.html` for
+rewrites `/api/*` to the Render service's URL and serves `index.html` for
 client-side routes, so the browser only ever talks to one origin.
 
-**Database (Neon).** Production uses the `production` branch; local development
-uses a `dev` branch (`neon branches create --name dev`).
+**Database (Neon).** The deployed API uses the `production` branch; local
+development uses a `dev` branch (`neon branches create --name dev`).
 
 ## Restoring onto a fresh Odoo trial
 
 1. Create the trial with Sales, Inventory, Manufacturing and Purchase, then an
    API key for your user.
 2. Update `ODOO_URL`, `ODOO_DB`, `ODOO_USER`, `ODOO_API_KEY` in `.env` (and the
-   Space secrets).
+   Render environment).
 3. `python scripts/check_odoo.py`, then `python -m scripts.seed_odoo`.
 
 The seed creates everything: suppliers, customers, 25 components, 5
