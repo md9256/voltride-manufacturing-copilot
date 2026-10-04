@@ -7,7 +7,7 @@ assistant that reads ERP data through **typed, validated tools**. Writes go only
 through **proposals a person confirms**, and reading supplier quotes and writing
 production briefings come with **deterministic checks**.
 
-**Live demo:** _LIVE_URL_ · AI features need the demo password (ask the author).
+**Live demo:** https://voltride-copilot.vercel.app · AI features need the demo password (ask the author).
 The first visit after a quiet period shows "Waking up the server" for 30–60 s
 while the free-tier API starts.
 
