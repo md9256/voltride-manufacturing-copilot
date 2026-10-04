@@ -1,0 +1,27 @@
+# Local development stack: the API container plus Postgres (used from Phase 3
+# for chat history and the audit log). The front end runs separately with
+# `npm run dev`, which proxies /api to localhost:8000.
+services:
+  api:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://copilot:copilot@db:5432/copilot
+    ports:
+      - "8000:7860"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: copilot
+      POSTGRES_PASSWORD: copilot
+      POSTGRES_DB: copilot
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
